@@ -178,7 +178,7 @@ cmd_unread() {
 }
 
 cmd_wait() {
-  local interval=30 timeout=0 start out
+  local interval=30 timeout=0 start out now remain sleep_for
   while [ $# -gt 0 ]; do
     case "$1" in
       --interval) interval="${2:-}"; shift 2 ;;
@@ -187,6 +187,7 @@ cmd_wait() {
     esac
   done
   case "$interval$timeout" in *[!0-9]*|'') die "wait: --interval/--timeout need whole seconds" ;; esac
+  [ "$interval" -ge 1 ] || die "wait: --interval must be at least 1"
   start="$(date +%s)"
   while :; do
     # transient gh errors: ignore and retry next tick
@@ -194,12 +195,91 @@ cmd_wait() {
       printf '%s\n' "$out"
       exit 0
     fi
-    if [ "$timeout" -gt 0 ] && [ $(( $(date +%s) - start )) -ge "$timeout" ]; then
+    now="$(date +%s)"
+    if [ "$timeout" -gt 0 ] && [ $(( now - start )) -ge "$timeout" ]; then
       echo "board: wait timed out after ${timeout}s" >&2
       exit 124
     fi
-    sleep "$interval"
+    sleep_for="$interval"
+    if [ "$timeout" -gt 0 ]; then
+      remain=$(( timeout - (now - start) ))
+      [ "$remain" -le 0 ] && { echo "board: wait timed out after ${timeout}s" >&2; exit 124; }
+      [ "$remain" -lt "$sleep_for" ] && sleep_for="$remain"
+    fi
+    sleep "$sleep_for"
   done
+}
+
+coord_file() { echo "$STATE_DIR/coord-on"; }
+watch_pid_file() { echo "$STATE_DIR/watch.pid"; }
+
+coord_on() {
+  [ -f "$(coord_file)" ]
+}
+
+cmd_coord() {
+  case "${1:-status}" in
+    on)
+      mkdir -p "$STATE_DIR"
+      date -u +%Y-%m-%dT%H:%M:%SZ > "$(coord_file)"
+      echo "board: routine coordination on for this checkout"
+      ;;
+    off)
+      rm -f "$(coord_file)"
+      echo "board: routine coordination off for this checkout"
+      ;;
+    status)
+      if coord_on; then echo on; else echo off; fi
+      ;;
+    *) die "coord: use on, off, or status" ;;
+  esac
+}
+
+watch_alive() {
+  local pid
+  [ -s "$(watch_pid_file)" ] || return 1
+  pid="$(cat "$(watch_pid_file)" 2>/dev/null || true)"
+  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+  kill -0 "$pid" 2>/dev/null
+}
+
+cmd_watch_status() {
+  if watch_alive; then
+    echo "running $(cat "$(watch_pid_file)")"
+    return 0
+  fi
+  echo "stopped"
+  return 1
+}
+
+cmd_watch() {
+  local timeout="${BOARD_WATCH_TIMEOUT:-900}"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --timeout) timeout="${2:-}"; shift 2 ;;
+      *) die "watch: unknown arg $1" ;;
+    esac
+  done
+  case "$timeout" in ''|*[!0-9]*) die "watch: --timeout needs whole seconds" ;; esac
+  if [ "${BOARD_WAIT:-}" = "off" ]; then
+    echo "board: watch not started (BOARD_WAIT=off). Do not start another watch."
+    return 0
+  fi
+  if ! coord_on; then
+    echo "board: watch not started (routine coordination is off). Do not start another watch."
+    return 0
+  fi
+  if watch_alive; then
+    echo "board: watch already running. Do not start another watch."
+    return 0
+  fi
+  mkdir -p "$STATE_DIR"
+  echo $$ > "$(watch_pid_file)"
+  trap '[ "$(cat "$(watch_pid_file)" 2>/dev/null || true)" = "$$" ] && rm -f "$(watch_pid_file)"' EXIT INT TERM
+  # One bounded wait. A live session may start this command once more after it exits.
+  local bin="$ROOT/tools/board"
+  [ -x "$bin" ] || bin="$0"
+  "$bin" wait --timeout "$timeout"
 }
 
 case "${1:-help}" in
@@ -208,6 +288,9 @@ case "${1:-help}" in
   unread) shift; cmd_unread ;;
   wait) shift; cmd_wait "$@" ;;
   whoami) me || die "gh not authenticated" ;;
+  coord) shift; cmd_coord "$@" ;;
+  watch) shift; cmd_watch "$@" ;;
+  watch-status) cmd_watch_status ;;
   *)
     cat <<USAGE
 tools/board post <text>        post a comment (or pipe text on stdin); must start with [<human>'s <agent>]
@@ -216,7 +299,13 @@ tools/board unread             show comments by others since your last check, th
 tools/board wait [--interval S] [--timeout S]
                                block until someone else posts; print it; exit 0 (124 on timeout)
 tools/board whoami             your GitHub login
-Env: BOARD_ISSUE (default 1), BOARD_REPO, BOARD_LOGIN
+tools/board coord on|off|status
+                               this checkout may post routine board notes (local flag)
+tools/board watch [--timeout S]
+                               one bounded wait; default BOARD_WATCH_TIMEOUT or 900s
+                               exits 0 with posts, 0 if already running or disabled, 124 on timeout
+tools/board watch-status       exit 0 only when a watch process is alive
+Env: BOARD_ISSUE (default 1), BOARD_REPO, BOARD_LOGIN, BOARD_WAIT, BOARD_WATCH_TIMEOUT
 USAGE
     ;;
 esac

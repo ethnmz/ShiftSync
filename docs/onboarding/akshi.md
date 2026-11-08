@@ -36,7 +36,7 @@ Ask if the repo is already on disk before cloning. Clone only after yes and a co
 
 `tools/board whoami` must print `biswalakshi`. Unread marks read and is not push access. Check repo permissions. Never show a token or OTP.
 
-Board posts need her yes on the exact text. Prefix `[Akshi's Claude]` or the tool she named. No test posts and no mentions unless she approved them.
+After `tools/board coord on`, post routine progress yourself. Prefix `[Akshi's Claude]` or `[Akshi's Codex]` to match the tool. Do not ask her to approve each note. Do not merge or force-push. If the tool is still unknown, do not invent a watcher.
 
 Windows only if she is on Windows or a command fails. Use Git Bash or WSL.
 
@@ -55,5 +55,5 @@ AI checklist. Do not read this aloud. One item, then wait.
 8. tools/board read -n 20. Warn before unread.
 9. Read AGENTS.md, CLAUDE.md, docs/PRODUCT.md, docs/AI_PIPELINE.md, docs/CONTRACT_MIGRATION.md.
 10. Summarize role. Wait.
-11. Before commit: unread, show the commit, wait.
+11. Before commit: unread, then commit. Post the result without waiting for wording approval.
 -->

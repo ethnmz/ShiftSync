@@ -2,13 +2,13 @@
 
 Repo: https://github.com/ethnmz/hackutd2026. Board issue: https://github.com/ethnmz/hackutd2026/issues/1.
 
-This file is the checklist the template does not finish for you. Cloning, or opening this pull request, does not make anyone's agent operational.
+This file is the local checklist. Cloning does not log `gh` in or start an agent.
 
-## What setup already did
+## What is already on main
 
-- Created the Message Board as issue #1, so `tools/board` can use its default `BOARD_ISSUE=1`.
-- Left `tools/board`, `.claude/settings.json`, and both hook scripts unchanged.
-- Copied the final ten-file upload into `CLAUDE.md` and `docs/`. `docs/EVALUATION.md` was named and not included. Those files are on this branch until the pull request is merged. `main` does not have them yet.
+- The board is issue #1, so `BOARD_ISSUE` stays unset. https://github.com/ethnmz/hackutd2026/issues/1
+- `tools/board` reads and posts there. `tools/board coord on` lets that checkout post routine notes without a human approving each one.
+- Claude Code hooks are `.claude/settings.json` and the two scripts in `.claude/hooks/`. They run only while Claude Code is open in this project.
 
 ## What setup could not do
 
@@ -30,32 +30,23 @@ If that pin command is unavailable on an older `gh`, open https://github.com/eth
 
 ## Every teammate, on their own machine
 
-1. Merge is Ethan's call. Until then, check out `cursor/shiftsync-team-setup-7a71` rather than expecting these files on `main`.
-2. `gh auth login` with that person's own GitHub account.
-3. `tools/board whoami` from the repo root. It must print that person's login.
-4. The logins in `AGENTS.md` are the ones supplied for this setup: `ethnmz`, `Navibytes`, `biswalakshi`, `aditrit06`. `tools/board whoami` should print the login of the account that ran `gh auth login`.
-5. Claude Code users open this project in Claude Code. Codex and other agents run the manual commands below.
+1. Use current `main`. Do not check out an old setup branch.
+2. `gh auth login` as yourself. `tools/board whoami` must print your login: `ethnmz`, `Navibytes`, `biswalakshi`, or `aditrit06`.
+3. `tools/board coord on` once in that checkout when you want routine AI-to-AI posts. This does not grant your login to anyone else.
+4. Claude Code keeps one `tools/board watch` after that. Codex CLI, if `codex exec --help` matches, can run `tools/codex-wake --once`. The Codex app only gets the pasted activation. Other tools run `tools/board unread` themselves.
 
-`tools/board whoami` was not verified here. This environment's GitHub integration returns HTTP 403 for `gh api user`, which is how the script looks up the login. That failure does not configure a laptop.
+A cloud agent session is not a laptop agent. `gh api user` failing in a cloud session does not configure a laptop.
 
 ## How the hooks actually behave
 
 Claude Code hooks are the committed project files `.claude/settings.json`, `.claude/hooks/board-session-start.sh`, and `.claude/hooks/board-prompt.sh`.
 
-- `SessionStart` runs the session hook on `startup`, `resume`, and `clear` (timeout 20 seconds). It prints unread posts, or a one-line unreachable message, then tells Claude to start one background `tools/board wait` unless `BOARD_WAIT=off`.
-- `UserPromptSubmit` runs the prompt hook on every prompt (timeout 10 seconds). It prints unread posts and stays silent when there are none.
+- `SessionStart` runs on `startup`, `resume`, and `clear` (timeout 20 seconds). It prints unread posts. If `tools/board coord` is on and `BOARD_WAIT` is not `off`, it tells Claude to start one `tools/board watch`.
+- `UserPromptSubmit` runs on every prompt (timeout 10 seconds). It stays silent while a watch process is alive, so it does not race the watcher. Otherwise it prints unread posts.
 - Both hooks exit 0. A dead board does not fail the Claude session.
-- They work only when Claude Code is running in this project, `gh` is on `PATH`, and `gh auth login` has succeeded. They call `tools/board unread`.
-- `BOARD_WAIT=off` only changes the session hook's instruction. It does not remove the hooks. Do not delete or disable the hook entries.
-- Nothing in this template installs hooks into the user account. Do not copy them into `~/.claude` as a substitute, and do not start `tools/board wait` as a standing process during setup.
-
-Codex is not wired up. The template has no `.codex` directory, no Codex hook, and no extra Codex rules file. `CLAUDE.md` is one line, `@AGENTS.md`, and only Claude Code uses it that way. Codex sees `AGENTS.md` only if the Codex product reads that file on its own. It sees board posts only when a person or agent runs `tools/board unread` or `tools/board wait`. A wake loop, in a terminal the person chooses, is:
-
-```bash
-while tools/board wait; do <your agent command>; done
-```
-
-Do not start that loop as part of repository setup.
+- They run only inside an open Claude Code session in this project, with `gh` logged in. Closing the app or sleeping the computer stops them. They do not start Codex.
+- `BOARD_WAIT=off` tells the session hook not to arm a watch. It does not delete the hooks.
+- `tools/codex-wake` is optional and unverified until the local `codex exec --help` advertises `--sandbox` and `workspace-write`. There is no Codex hook in this repo.
 
 ## Same-account posts
 
@@ -78,4 +69,4 @@ Use `<issue#>-<slug>` when the work already has an issue. Review of a branch you
 
 ## Ownership
 
-Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. `docs/PRODUCT.md` is the scope. `docs/CONTRACT_MIGRATION.md` is the contract diff. Ethan's existing `ethan/frontend` checkout stays valid.
+Do not edit a path you do not own. A shared-contract change is one board note to the owners it affects, then one editor. Ethan still decides reassignment, merges, and the open follow-up gate question. The map is `AGENTS.md`. Ethan's existing `ethan/frontend` checkout stays valid.

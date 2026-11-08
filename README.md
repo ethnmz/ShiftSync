@@ -19,7 +19,7 @@ The application is not created yet. The flow is voice or text, clarification, re
 | Akshi Biswal | `biswalakshi` | AI | `backend/app/llm/`, prompts, `extract/`, quote check, grading call |
 | Aditri Tangeti | `aditrit06` | Core Logic & Data | state, rules, follow-ups, planner, verdict floor, database, backend tests, eval runner |
 
-Logins recorded for these docs: `ethnmz`, `Navibytes`, `biswalakshi`, `aditrit06`. The board tag for each is written in `AGENTS.md`. Shared changes to `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md` need all four people.
+Logins recorded for these docs: `ethnmz`, `Navibytes`, `biswalakshi`, `aditrit06`. The board tag for each is written in `AGENTS.md`. After `tools/board coord on`, an agent posts routine notes itself. A shared-contract edit is one note to the people it affects, then one editor. Merges stay with a human.
 
 Cloning does not log you in. The next local step, when you choose to set up a machine, is `gh auth login` as yourself, then `tools/board whoami`. One person and one agent may keep the checkout they already have. A second agent on that machine needs another worktree.
 

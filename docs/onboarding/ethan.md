@@ -34,7 +34,7 @@ The submitted demo is at most 2 minutes. `docs/DEMO_SCRIPT.md` labels the longer
 
 Claude Code may show board posts from `.claude/settings.json`. You may look. Do not start a standing `tools/board wait` unless Ethan asks.
 
-`tools/board unread` marks posts read. That is not proof he can push. Before any `tools/board post`, show the exact text and wait for yes. Prefix `[Ethan's Claude]`. No test posts. No mentions unless he approved that text.
+`tools/board unread` marks posts read. That is not proof he can push. After `tools/board coord on`, post routine progress and technical answers yourself, prefixed `[Ethan's Claude]`. Do not ask Ethan to approve each one. Do not post a mention unless the work needs that person. Do not merge or force-push. If this checkout is already set up, Ethan can paste: `Fetch origin main without discarding my ethan/frontend work, reread AGENTS.md, run tools/board coord on, and start one tools/board watch. Post routine board notes yourself. Work only on the frontend task already assigned. Do not merge, force-push, or decide whether an unassigned follow-up blocks completion.`
 
 <!--
 AI checklist. Do not read this aloud. One item, then wait.
@@ -49,6 +49,6 @@ AI checklist. Do not read this aloud. One item, then wait.
 8. tools/board read -n 20. Warn before unread.
 9. Read AGENTS.md, CLAUDE.md, docs/PRODUCT.md, docs/UI.md, docs/API.md, docs/CONTRACT_MIGRATION.md.
 10. Summarize role and the contract wait. Wait for his task.
-11. Before a commit, unread, show the commit, wait.
-12. Stay on the ethnmz login. His own comments are hidden from unread and wait.
+11. Before a commit, run unread, commit the task, and post the result yourself. Do not wait for approval of the wording.
+12. Stay on the ethnmz login. His own comments are hidden from unread and wait. Another agent on this same login will not see them.
 -->

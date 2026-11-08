@@ -36,7 +36,7 @@ Ask whether the repo is already downloaded before any clone. Clone only after he
 
 `tools/board whoami` must print `Navibytes` on his own `gh` login. His comments are hidden from `unread` and `wait`. Unread marks read and does not prove push. Check `gh api repos/ethnmz/hackutd2026 --jq .permissions`. Never print a token or OTP.
 
-Show every board post and wait for yes. Prefix with his name and the tool, for example `[Diego's Codex]`. No test posts. No mentions unless he approved them.
+After `tools/board coord on`, post routine progress yourself. Prefix `[Diego's Claude]` or `[Diego's Codex]` to match the tool. Do not ask him to approve each note. Do not merge or force-push. If the tool is still unknown after the first question, do not invent a watcher.
 
 Windows: ask only if he is on Windows or a command fails. Then Git Bash or WSL.
 
@@ -56,5 +56,5 @@ AI checklist. Do not read this aloud. One item, then wait.
 9. tools/board read -n 20. Warn before unread.
 10. Read the docs listed above. Do not edit docs/API.md.
 11. Summarize role. Wait.
-12. Before commit: unread, show the commit, wait.
+12. Before commit: unread, then commit. Post the result without waiting for wording approval.
 -->

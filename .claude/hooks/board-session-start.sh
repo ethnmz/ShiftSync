@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart: show unread board posts and tell the agent to keep a background wait running.
+# SessionStart: show unread board posts and, if this checkout opted in, ask for one watch.
 # Never fails the session: always exits 0.
 cd "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null || exit 0
 out="$(tools/board unread 2>&1)" || out="(board unreachable: $(printf '%s' "$out" | head -n 1)). Run tools/board unread later."
@@ -11,10 +11,12 @@ else
   echo "No unread posts."
 fi
 if [ "${BOARD_WAIT:-}" = "off" ]; then
-  echo "Board loop: your supervisor watches the board and relays anything that affects you. Do NOT arm a background tools/board wait. Still run tools/board unread before each commit and after merges."
-else
+  echo "Board watch: BOARD_WAIT=off. Do not start tools/board watch."
+elif tools/board coord status 2>/dev/null | grep -qx on; then
   cat <<'MSG'
-Board loop: start ONE background Bash command now with run_in_background: `tools/board wait`. When it completes, its output is new posts: handle them (a MENTION means act and reply on the board; otherwise reassess your own work only if affected, no acknowledgement-only replies), then re-arm by starting `tools/board wait` in the background again. Do not run two waits at once.
+Board watch: routine coordination is on. If tools/board watch-status is stopped, start ONE background command: tools/board watch. When it prints posts, act only on a MENTION that asks for work you own, or on a shared-contract note that names your files. Do not reply to ordinary progress. Post your own progress or a direct technical answer without asking the human to approve the wording. Then start tools/board watch once more. If the output says already running, do nothing. Do not start a second watch.
 MSG
+else
+  echo "Board watch: routine coordination is off. Do not start tools/board watch until this checkout runs tools/board coord on."
 fi
 exit 0
