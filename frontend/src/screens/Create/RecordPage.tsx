@@ -11,6 +11,7 @@ import { isEditable } from "../../review";
 import { person, useUser } from "../../session/user";
 import { DEMO_INCOMING_ID, PageWidth, suggestedStep, useFlow, useHandoffQuery } from "./CreateFlow";
 import { AiByline } from "../../components/mascots/Flat";
+import Mascot3D from "../../components/mascots/Mascot3D";
 
 type Mode = "record" | "type";
 const RANK: Record<Certainty, number> = { unknown: 0, unverified: 1, reported: 2, confirmed: 3 };
@@ -151,7 +152,8 @@ export default function RecordPage() {
         {/* Conversation */}
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-5" aria-live="polite">
           {notes.length === 0 && !send.isPending && (
-            <div className="m-auto flex max-w-sm flex-col items-center gap-2 py-10 text-center">
+            <div className="m-auto flex max-w-sm flex-col items-center gap-2 py-6 text-center">
+              <Mascot3D kinds={["murmur"]} width={150} height={130} />
               <h1 className="text-xl font-semibold">What is the next shift taking over?</h1>
               <p className="text-sm text-muted">
                 Talk it through the way you'd tell {incoming?.split(" ")[0]}: what's done, what isn't, and what you're not sure about. ShiftSync asks

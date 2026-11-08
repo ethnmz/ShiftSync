@@ -5,6 +5,7 @@ import type { HandoffSummary } from "../../api/types";
 import { PageHeader } from "../../components/AppShell";
 import { Button, Card, Chip, Notice, Panel, Skeleton } from "../../components/ui";
 import { formatClock } from "../../labels";
+import Mascot3D from "../../components/mascots/Mascot3D";
 
 const RECEIVABLE = ["submitted", "acknowledged", "verifying", "verified", "verified_with_assistance"];
 
@@ -35,7 +36,11 @@ export default function ReceiveList() {
             {errorMessage(list.error, "The request failed.")}
           </Notice>
         ) : rows.length === 0 ? (
-          <Panel title="No submitted handoffs yet" description="A handoff shows up here after Shift A reviews and submits it on the Create screen.">
+          <Panel
+            title="No submitted handoffs yet"
+            description="A handoff shows up here after Shift A reviews and submits it on the Create screen."
+            actions={<Mascot3D kinds={["nimbus"]} width={120} height={110} className="-my-4" />}
+          >
             <div className="flex flex-wrap gap-2">
               <Link to="/create" className="inline-flex min-h-touch items-center rounded-xl border border-line-strong bg-surface px-4 text-sm font-semibold shadow-[0_1px_2px_rgba(16,24,40,0.08)] hover:bg-subtle">
                 Go to Create

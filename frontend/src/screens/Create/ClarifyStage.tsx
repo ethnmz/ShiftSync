@@ -9,6 +9,7 @@ import { formatClock, slotLabel } from "../../labels";
 import { person } from "../../session/roster";
 import { byPriority } from "../../review";
 import { AiByline } from "../../components/mascots/Flat";
+import Mascot3D from "../../components/mascots/Mascot3D";
 
 // What an answered question added: the facts sourced from its answer.
 export function effectOf(handoff: HandoffDetail, q: Question) {
@@ -212,6 +213,7 @@ export function ClarifyPanel({
       ) : (
         <AskBubble>
           <div className="flex flex-col items-start gap-3">
+            <Mascot3D kinds={["orbit"]} width={150} height={130} className="self-center" />
             <p className="font-semibold">{handoff.questions.length ? "No more questions." : "No questions needed."}</p>
             <p className="text-sm text-muted">
               {handoff.questions.length ? "I asked what mattered most. Check the structured handoff next." : "Nothing important is missing in this note."}
