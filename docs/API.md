@@ -4,7 +4,7 @@ This is the final spec pack's contract. It replaces the earlier interview/signof
 
 Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/src/api/types.ts`; fixtures in `src/api/fixtures/`. Demo auth: `X-User: <roster id>` header (role from roster). Role checks are enforced for submit, acknowledge, follow-up assignment and clarified-in-person.
 
-**Errors** (every 4xx): `{ "detail": { "code": "...", "message": "display-ready text", ...extra } }`. Codes include `not_found`, `forbidden`, `unknown_user`, `conflict`, `unprocessable`, `submit_blocked` (extra: `blockers`), `analysis_failed` (extra: `statement_id`; the statement is kept and nothing else changes), and `transcription_failed` (422 from `POST /handoffs/{id}/statements`; extra: `audio_saved: true`; the UI shows `message` next to the text box).
+**Errors** (every 4xx): `{ "detail": { "code": "...", "message": "display-ready text", ...extra } }`. Codes include `not_found`, `forbidden`, `unknown_user`, `conflict`, `unprocessable`, `submit_blocked` (extra: `blockers`), `analysis_failed` (extra: `statement_id`; the statement is kept and nothing else changes), and `transcription_failed` (422 from `POST /handoffs/{id}/statements` and `POST /verification/{vid}/answer`; extra: `audio_saved: true`; the UI shows `message` next to the text box).
 
 ## Handoffs
 - `POST /handoffs` `{ "outgoing_id": "maya", "incoming_id": "jordan" }` → `HandoffDetail` (state `draft`; carried-over open items/follow-ups attached)
@@ -22,7 +22,7 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 - `GET /handoffs/{id}/briefing` → `Briefing` (409 `conflict` before submit). Optional `X-User`: the incoming lead's first view is logged for `shift_b_seconds`.
 - `POST /handoffs/{id}/acknowledge` → `HandoffDetail`, state `acknowledged` (records an Acknowledgment; **not** verification)
 - `POST /handoffs/{id}/verification/start` → `{ "state": "verifying", "check": Check }` (creates checks, returns the first; repeat calls return the current pending check). 409 `nothing_to_verify` if no item qualifies.
-- `POST /verification/{vid}/answer` (multipart audio or `{ "text": "..." }`) → `VerificationAttempt` (includes `next_check` and `handoff_state`). 422 `analysis_failed` if grading fails; no attempt is recorded.
+- `POST /verification/{vid}/answer` (multipart audio or `{ "text": "..." }`) → `VerificationAttempt` (includes `next_check` and `handoff_state`). 422 `analysis_failed` if grading fails; no attempt is recorded. 422 `transcription_failed` if a voice answer can't be transcribed.
 - `POST /verification/{vid}/clarified-in-person` `{ "note": "..." }` (lead or supervisor; only when the check is `needs_clarification`) → `HandoffDetail`
 
 ## Follow-ups
