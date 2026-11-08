@@ -57,7 +57,8 @@ Browser (React)  ──/api──▶  FastAPI backend  ──▶  SQLite  (backe
 Deterministic code owns handoff states, required facts, priority, the question budget, certainty floors, verdict floors and acknowledgment tracking. Models extract facts, phrase questions, write briefing lines and grade answers. Code then checks every quote against the source and caps the result. Every LLM call is meant to go through one function that validates the output and falls back to "change nothing" on failure. Product config lives in [config/](config/) (`slots.yaml`, `rules.yaml`, `assets.yaml`, `roster.yaml`, `runbooks.yaml`). Full design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 **Stack (from the repo's manifests):**
-- Frontend: React 18.3, TypeScript 5.6, Vite 5.4, Tailwind CSS 3.4, TanStack Query 5, React Router 6, Vitest 2, Inter bundled locally.
+- Frontend: React 18.3, TypeScript 5.6, Vite 5.4, Tailwind CSS 3.4, TanStack Query 5, React Router 6, Vitest 2, lucide-react icons, Urbanist and Geist Mono bundled locally.
+- AI mascots: the glass mascots from the "AI Agent Mascot Models" Figma file mark AI-written output (notes, questions, briefing, understanding check) as flat CSS avatars. Four empty or hero spots show them live in 3D with three.js 0.170, @react-three/fiber 8 and drei 9. That code is lazy-loaded (about 250 kB gzipped, measured with `vite build`). They are decorative: a text label always says which AI step produced the content.
 - Backend: FastAPI, Uvicorn, SQLModel on SQLite, Pydantic v2, PyYAML, rapidfuzz, `openai` and `anthropic` SDKs, pytest.
 - LLM: `LLM_PROVIDER=nemotron` (NVIDIA's OpenAI-compatible endpoint) or `claude`. The model ids in `.env.example` are blank on purpose until someone confirms a current model card.
 
