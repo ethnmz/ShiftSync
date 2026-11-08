@@ -4,7 +4,7 @@ The final spec pack shipped a different four-way split (capture UI with Shift A,
 
 Times in the pack assumed a Sunday-morning submission. They were not re-checked. Treat the list as an order of work, not a deadline.
 
-Shared contracts are `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. The pack is the current text. `docs/CONTRACT_MIGRATION.md` lists where that text differs from the in-person nine-item agreement. Changing a shared field still needs all four people.
+Shared contracts are `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. The pack is the current text. `docs/CONTRACT_MIGRATION.md` lists where that text differs from the in-person nine-item agreement. A shared-field change is one board note to the owners it affects, then the contract owner edits that file. The open follow-up gate question still needs a human.
 
 ## Roles
 

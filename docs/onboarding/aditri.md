@@ -39,7 +39,7 @@ Do not clone if the folder exists. Clone only after she says it is absent and sh
 
 `tools/board whoami` must print `aditrit06`. Her own comments stay hidden from `unread` and `wait`. Check `gh api repos/ethnmz/hackutd2026 --jq .permissions` before saying she can push. Never print a token or OTP.
 
-Show every board post and wait for yes. Prefix `[Aditri's Codex]`. No test post and no mention unless she approved that text.
+After `tools/board coord on`, post routine progress yourself, prefixed `[Aditri's Codex]`. Do not ask her to approve each note. Do not merge or force-push. The Codex app does not run Claude hooks. `tools/codex-wake --once` runs only when `codex exec --help` on her machine shows `--sandbox` and `workspace-write`. Otherwise it exits unverified and she uses the app.
 
 Windows only if she is on Windows or a command fails. Use Git Bash or WSL.
 
@@ -57,5 +57,5 @@ AI checklist. Do not read this aloud. One item, then wait.
 9. tools/board read -n 20. Warn before unread.
 10. Read AGENTS.md, CLAUDE.md, docs/PRODUCT.md, docs/API.md, docs/DATA_MODEL.md, docs/CONTRACT_MIGRATION.md. No Claude hooks will do this.
 11. Summarize role and the follow-up gate change. Wait.
-12. Before commit: unread, show the commit, wait.
+12. Before commit: unread, then commit. Post the result without waiting for wording approval.
 -->
