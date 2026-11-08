@@ -4,8 +4,10 @@ This is the final spec pack's contract. It replaces the earlier interview/signof
 
 Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/src/api/types.ts`; fixtures in `src/api/fixtures/`. Demo auth: `X-User: <roster id>` header (role from roster). Role checks are enforced for submit, acknowledge, follow-up assignment and clarified-in-person.
 
+**Errors** (every 4xx): `{ "detail": { "code": "...", "message": "display-ready text", ...extra } }`. Codes include `not_found`, `forbidden`, `unknown_user`, `conflict`, `unprocessable`, `submit_blocked` (extra: `blockers`), `analysis_failed` (extra: `statement_id`; the statement is kept and nothing else changes), and `transcription_failed` (422 from `POST /handoffs/{id}/statements`; extra: `audio_saved: true`; the UI shows `message` next to the text box).
+
 ## Handoffs
-- `POST /handoffs` `{ "outgoing_id": "maya", "incoming_id": "jordan" }` → `Handoff` (state `draft`; carried-over open items/follow-ups attached)
+- `POST /handoffs` `{ "outgoing_id": "maya", "incoming_id": "jordan" }` → `HandoffDetail` (state `draft`; carried-over open items/follow-ups attached)
 - `GET /handoffs?state=&limit=` → list (History, Supervisor)
 - `GET /handoffs/{id}` → full `HandoffDetail` (below)
 
@@ -14,7 +16,7 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 - `POST /handoffs/{id}/questions/{qid}/answer` `{ "text": "..." }` or `{ "dont_know": true }` → `HandoffDetail`
 - `PATCH /facts/{fid}` `{ "value"?, "normalized"?, "certainty"?, "review_state": "operator_confirmed|operator_edited|operator_rejected" }` → `HandoffDetail`. Note: certainty can only be **raised** if `text` (a new operator statement) is included; it's stored as a `review_edit` statement.
 - `POST /handoffs/{id}/review/confirm-routine` → confirms all non-critical AI facts → `HandoffDetail`
-- `POST /handoffs/{id}/submit` → `HandoffDetail`, or 409 `{ "blockers": [Blocker] }` if critical facts are unreviewed or safety questions are pending
+- `POST /handoffs/{id}/submit` → `HandoffDetail`, or 409 `submit_blocked` with `detail.blockers: [Blocker]` if critical facts are unreviewed or safety questions are pending
 
 ## Shift B: receive, acknowledge, verify
 - `GET /handoffs/{id}/briefing` → `Briefing`
@@ -60,7 +62,7 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
   "assigned_by":null,"assigned_at":null,"status":"open" }
 // once assigned: "owner":{"id":"jordan","name":"Jordan Blake"},"owner_label":"Jordan Blake",
 //   "assigned_by":{"id":"jordan","name":"Jordan Blake"},"assigned_at":"2026-11-08T13:01:00Z"
-// Blocker (409 from submit). message is display-ready.
+// Blocker (in detail.blockers of a 409 submit_blocked). message is display-ready.
 { "code":"unreviewed_critical_fact","message":"Review work status on UPS-B maintenance","item_id":"I-1","fact_id":"F-1" }
 { "code":"pending_safety_question","message":"Answer the pending safety question (\"I don't know\" is allowed)","item_id":"I-1","question_id":"Q-2" }
 // Briefing
