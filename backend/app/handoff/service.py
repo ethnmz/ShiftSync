@@ -360,7 +360,7 @@ def _add_fact(session: Session, h: Handoff, stmt: Statement, item: Item, ef: Any
                 certainty=certainty, certainty_reason=reason or "operator stated", review_state="ai_extracted",
                 source_statement_id=stmt.id, quote=quote)
     session.add(fact)
-    if reason:
+    if certainty != proposed:
         audit(session, "certainty_floored", handoff_id=h.id, item_id=item.id, fact_id=fact.id,
               proposed=proposed, certainty=certainty, reason=reason)
     for old in item_facts(session, [item.id]):
