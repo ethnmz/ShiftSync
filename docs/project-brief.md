@@ -1,5 +1,5 @@
 # Where scope lives
 
-The scope document is [PRODUCT.md](PRODUCT.md), copied from the final upload. The project guide is the root `CLAUDE.md`, which also imports `AGENTS.md`.
+The product is ShiftSync: one outgoing voice note, a short interview, explicit unknowns, then an incoming understanding check and correction.
 
-Read [IMPORT_NOTES.md](IMPORT_NOTES.md) before treating a sponsor line, a model id, a score, the three-minute demo script, or a HALT message as confirmed. `docs/EVALUATION.md` was listed in the guide and was not in the upload.
+Read [PRODUCT.md](PRODUCT.md). Direction is the root `CLAUDE.md`. File owners are `AGENTS.md` and [TEAM_PLAN.md](TEAM_PLAN.md). What is not built is [IMPORT_NOTES.md](IMPORT_NOTES.md).

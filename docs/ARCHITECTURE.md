@@ -1,88 +1,56 @@
 # Architecture
 
-## Components
+Three processes. One product path: note, interview, confirmed record, understanding check, correction, signed record.
 
-```
- iPhone (tech)                                        Web app (shift leads)
- iMessage text / voice note                           React + Vite  :5173
-        │  ▲                                                 │  ▲ polls /api/* every 2 s
-        ▼  │ replies (ack, questions, HALT)                  ▼  │
- ┌───────────────────┐   POST /api/ingest/*   ┌──────────────────────────────────┐
- │  photon-bridge    │ ─────────────────────▶ │  backend  (FastAPI :8000)        │
- │  Bun + spectrum-ts│ ◀───────────────────── │                                  │
- │  :8787 (local)    │   POST /send           │  ingest → stt → extract (LLM)    │
- └───────────────────┘   (proactive msgs)     │   → verify quotes → reconcile    │
-                                              │   → rules → conflicts → notify   │
-                                              │  handoff: clarify / briefing /   │
-                                              │   readback (LLM) / gate / score  │
-                                              │  SQLite  data/ledger.db          │
-                                              │  audio   data/audio/*.wav        │
-                                              └──────────────┬───────────────────┘
-                                                             │
-                               Claude API  /  NVIDIA NIM (Nemotron)  /  STT (OpenAI or local Whisper)
+```text
+phone (voice or text)                         web (leads)
+        |                                         |  poll /api/handoff/current every 1.5 s
+        v                                         v
+photon-bridge :8787  -- POST /api/ingest/* -->  backend :8000
+        ^                                         |
+        |  POST /send (next question, correction) |
+        +-----------------------------------------+
+                                              notes → facts → interview → check → handoff gate
 ```
 
-## Processes
-1. **backend**: owns all state and logic. Single source of truth.
-2. **photon-bridge**: thin adapter. No business logic. Forwards inbound messages and sends whatever text the backend returns. Keeps a `Map<senderId, space>` so the backend can send proactive messages (clarifications, HALTs) to people who have messaged before.
-3. **frontend**: read-mostly UI plus handoff actions (start handoff, acknowledge, read-back, ask).
+The bridge has no business logic. It forwards text or audio and sends the `reply` string. The backend owns state. The web app shows the current question, the explicit unknowns, and the signed record.
 
-## Memo pipeline (`app/pipeline/ingest.py::process_memo`)
+## Routing
 
-```
-1. receive      text or audio bytes + sender phone + source
-2. identify     phone → Person via roster (unknown → reject)
-3. stt          audio → ffmpeg → 16 kHz WAV → transcript   (skip for text)
-4. store        Memo(raw_text, audio_path, received_at=clock.now(), shift_id=current)
-5. classify     is this an answer to a pending Clarification from this person?
-                  yes → handoff/clarify.py::record_answer → re-run extract on answer → stop
-6. extract      LLM(task="extract") → [Observation]       (prompt in AI_PIPELINE.md)
-7. verify       drop observations whose quote isn't in the transcript (fuzzy ≥ 0.85)
-8. resolve      asset mentions → asset IDs (LLM suggestion validated against assets.yaml aliases)
-9. reconcile    per observation: link to open item | open new item | update | resolve
-                (closure only for closing actions: restored, lockout_removed, work_completed,
-                 alarm_cleared, directive_lifted)
-10. rules       recompute severity for touched items (rules.yaml)
-11. conflicts   if observation.action ∈ START_ACTIONS → check dependency graph + directives
-                  → Conflict(level=HALT|WARN) → immediate reply via bridge
-12. clarify     observation.ambiguities → queued Clarification (asked at handoff,
-                  or immediately if rules.yaml says ask_immediately for this severity)
-13. reply       short confirmation to sender, e.g. "Logged: LOTO on BRK-4 (critical) ✅"
-```
+`router.py` classifies an inbound message as a shift note, an interview answer, or a check answer.
 
-Steps 6–8 are the only LLM-dependent steps in the memo path. Everything after is deterministic.
+- No handoff open, or status `draft`: it is a note.
+- Status `interviewing` and the sender is the outgoing lead: it is an interview answer to the open question.
+- Status `checking` or `correcting` and the sender is the incoming lead: it is a check answer.
+- Anything else from a roster number is stored as a note and does not change fact status.
 
-## Handoff state machine (`app/handoff/state.py`)
+Diego owns `router.py`. Changing these three kinds is a shared-interface change.
 
-```
- draft ──start_outgoing──▶ outgoing_review ──all critical clarifications answered──▶ briefing
-                                  │  (bot sends questions via iMessage, collects answers)
- briefing ──readback submitted──▶ readback_review ──all critical items acked──▶ complete
-```
-- `start_outgoing` (Shift A lead, web button or iMessage "start handoff"): generate clarifications for open items/memos from this shift with unresolved ambiguities, plus **rule-generated** questions (e.g. any `bypass` item with no update in > 4 h: "Still bypassed?").
-- `briefing`: build the I-PASS view (deterministic structure + LLM one-liners).
-- `readback`: grade → mark covered items as acked (method=`readback`); missed/misstated critical items need a tap ack (method=`tap`).
-- `complete`: transfer ownership of all open items to the incoming lead; compute and store the final score; post a summary to both leads via iMessage.
+## Note path
 
-## Conflict detection (`app/pipeline/conflicts.py`)
-- `START_ACTIONS = {test_started, work_started, energize, load_increase}`.
-- For the target asset `a`: collect `a` + all **upstream** assets (assets that feed `a`, recursively) + `a`'s hall.
-- HALT if any open item on that set has kind `lockout_tagout`, or `vendor_work` with status paused/active.
-- WARN/HALT per `rules.yaml` for active `directive` items whose scope matches the hall and whose category matches the action category.
-- WARN if a cooling `bypass` is open for the hall and the action category is `heavy_load`.
-- Output: `Conflict{level, message, blocking_item_ids, memo_id}` → iMessage reply + red dashboard banner.
+1. Reject unknown phone numbers. Do not store them.
+2. Speech-to-text for audio only. Photon does not supply a transcript.
+3. Store the memo at `clock.now()`.
+4. `notes/extract.py` asks the model for candidate facts.
+5. `facts/verify.py` drops a quote that is not in the transcript.
+6. `facts/status.py` downgrades hedges to `reported` and leaves gaps as `unknown`.
+7. `notes/reconcile.py` attaches facts to an item. Asset ids come only from configuration. No match means `asset_id` null, not a guessed id.
+8. `interview/gaps.py` and `interview/planner.py` choose at most one next critical question, or end the interview.
 
-## Clock
-`app/clock.py` keeps `offset`. `clock.now() = datetime.utcnow() + offset`. `/api/demo/clock` sets simulated time. The seed script sets the clock to each scenario step's `at` before posting it, so stale/age logic works.
+Steps 5 through 8 are code. The model does not set status, order, or the gate.
 
-## Environment
-See `.env.example`. Backend reads `.env` via `pydantic-settings`. The bridge reads its own env (`SPECTRUM_*`, `BACKEND_URL`, `BRIDGE_PORT`).
+## Check path
 
-## Failure modes and fallbacks
-| Failure | Fallback |
-|---|---|
-| Photon/iMessage down | Bridge's terminal provider, or web "Log memo" box, or seed script |
-| STT fails | Store the memo with `needs_review`, show "transcription failed" with audio player |
-| LLM JSON invalid twice | Memo flagged `needs_review`; no ledger change (never guess) |
-| LLM provider down | Switch `LLM_PROVIDER` and restart (~10 s) |
-| Venue Wi-Fi | Pre-seeded DB snapshot `backend/data/demo_snapshot.db` + local Whisper |
+`check/questions.py` chooses the next confirmed fact. `check/session.py` asks it. `check/grade.py` proposes `aligned`, `misunderstood`, or `not_mentioned`. Code keeps `aligned` only when the evidence quote is in the answer. Otherwise the handoff moves to `correcting` and the reply is the correction.
+
+## Gate
+
+`handoff/gate.py` reads facts and the latest grades. `handoff/metrics.py` computes the four evaluation numbers when a scenario with ground truth is available. Metrics do not open the gate.
+
+## Clock and config
+
+`clock.now()` is UTC plus a demo offset. Configuration files named in `CLAUDE.md` are not in the repo. The app cannot load them until someone adds them as an implementation task. Do not ship sample secrets or real phone numbers to fill that gap.
+
+## Deferred
+
+A dependency warning that only reads ids already listed in configuration is P2. It is not on the path above. There is no parallel conflict engine to implement for the demo.

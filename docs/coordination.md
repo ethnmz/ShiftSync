@@ -65,15 +65,17 @@ Local read state is under `.board/`, which `.gitignore` already ignores. That in
 
 ## Branches and worktrees
 
-Agents do not share one working tree. From a fresh `main` after this setup is merged:
+One person and one agent may keep working in the checkout they already have. Ethan's local `ethan/frontend` checkout is that case. Do not delete it or move it just to match a sample command.
+
+When a second agent will edit on the same machine, give it another worktree:
 
 ```bash
 git fetch origin
-git worktree add ../hackutd-work -b <issue#>-<slug> origin/main
+git worktree add ../hackutd-other -b <login>-<slug> origin/main
 ```
 
-Use a different worktree to review a pull request or run tests. Do not point that review checkout at the branch an agent is editing. The normal branch name is `<issue#>-<slug>`. Never force-push.
+Use `<issue#>-<slug>` when the work already has an issue. Review of a branch you are not editing belongs in a separate worktree. Never force-push.
 
 ## Ownership
 
-Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. `docs/IMPORT_NOTES.md` is the crosswalk from the team-plan filenames to that table.
+Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. `docs/PRODUCT.md` is the scope. `docs/IMPORT_NOTES.md` lists what is not built.

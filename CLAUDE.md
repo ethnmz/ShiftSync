@@ -1,10 +1,10 @@
 @AGENTS.md
 
-The guide below is the uploaded project guide, copied unchanged. `AGENTS.md` wins on the board, branches, and who owns which file. `docs/PRODUCT.md` is the imported scope document. `docs/IMPORT_NOTES.md` records what was not in the upload and the limits on sponsor lines, model ids, scores, video length, and HALT wording.
+This guide is the product direction. `docs/PRODUCT.md` restates it for scope. If a feature list drifts from the five failure modes below, this guide wins until the team agrees on a change. `AGENTS.md` wins on the board, branches, and file owners. `docs/IMPORT_NOTES.md` says what is not built yet.
 
 # CLAUDE.md — ShiftSync
 
-HackUTD 2026 · **NorthMark Compute & Cloud (NMC²)** track ("Keep the World Running"). Also eligible: **Photon** (Best Use of Photon API) and **Nvidia** (Nemotron Beyond a Chatbot).
+HackUTD 2026 · **NorthMark Compute & Cloud (NMC²)** track ("Keep the World Running"). Photon and Nvidia are optional submission choices. This repository does not confirm sponsor eligibility.
 
 ## The problem we own
 
@@ -30,7 +30,7 @@ Basic handoff software (note organization, carrying tasks forward, acknowledgmen
 | 4 | Unresolved uncertainty (nobody knows, looks complete) | Every fact is `confirmed` / `reported` / `unknown`; unknowns need a human-assigned owner and due time | `Fact.status`, `follow_up` |
 | 5 | Handoff fatigue (long forms get rushed) | Adaptive: ask only for missing *critical* slots, strict question budget, one question at a time | `interview/planner.py`, `config/slots.yaml` |
 
-Read `docs/PRODUCT.md` first. It is the source of truth for scope.
+Read `docs/PRODUCT.md` for the feature list. It matches this guide. Scope changes still need the team agreement in `AGENTS.md`.
 
 ## Non-negotiable design principles
 
@@ -49,7 +49,7 @@ shiftsync/
 ├── CLAUDE.md
 ├── .env.example
 ├── docs/
-│   ├── PRODUCT.md        ← problem, 5 failure modes, features P0/P1/P2, open question for NMC²
+│   ├── PRODUCT.md        ← problem, 5 failure modes, P0/P1/P2
 │   ├── ARCHITECTURE.md   ← components, conversation routing, interview + check loops
 │   ├── DATA_MODEL.md     ← Item, Fact (confirmed/reported/unknown), Interview, Check, metrics
 │   ├── API.md            ← REST contract
@@ -57,11 +57,11 @@ shiftsync/
 │   ├── EVALUATION.md     ← how we prove we're better (4 metrics × 3 conditions)
 │   ├── PHOTON_BRIDGE.md  ← iMessage bridge (spectrum-ts, TypeScript)
 │   ├── UI.md             ← screens
-│   ├── DEMO_SCRIPT.md    ← 3-minute demo
+│   ├── DEMO_SCRIPT.md    ← submitted cut ≤2 min; longer rehearsal kept separate
 │   └── TEAM_PLAN.md      ← 4 people, overnight milestones
 ├── config/
 │   ├── slots.yaml        ← required facts per item kind, safety flags, hedge lexicon, budget
-│   ├── rules.yaml        ← severity, gating, scoring, (P2) conflict halts
+│   ├── rules.yaml        ← gating; dependency warnings are P2 only, not the core path
 │   ├── assets.yaml       ← equipment registry + dependencies + aliases
 │   ├── runbooks.yaml     ← suggested contingencies
 │   └── roster.yaml       ← people, roles, phones
@@ -95,7 +95,7 @@ cd photon-bridge && bun install && bun run dev
 
 ## Backend module map
 
-`app/main.py`, `db.py`, `models.py`, `schemas.py`, `clock.py`, `config.py`, `llm/` (providers + `complete_json`), `stt/`, `notify.py` (→ bridge), `router.py` (decides whether an inbound message is a shift note, an interview answer or a check answer), `notes/` (`ingest.py`, `extract.py`, `reconcile.py`), `facts/` (`status.py`: hedge enforcement, `verify.py`: quote check), `interview/` (`gaps.py`, `planner.py`, `session.py`), `check/` (`questions.py`, `grade.py`, `session.py`), `handoff/` (`state.py`, `gate.py`, `metrics.py`, `briefing.py`), `ask.py`, `eval/`, `demo/`, `routes/`.
+`app/main.py`, `db.py`, `models.py`, `schemas.py`, `clock.py`, `config.py`, `llm/` (providers + `complete_json`), `stt/`, `notify.py` (→ bridge), `router.py` (decides whether an inbound message is a shift note, an interview answer or a check answer), `notes/` (`ingest.py`, `extract.py`, `reconcile.py`), `facts/` (`status.py`: hedge enforcement, `verify.py`: quote check), `interview/` (`gaps.py`, `planner.py`, `session.py`), `check/` (`questions.py`, `grade.py`, `session.py`), `handoff/` (`state.py`, `gate.py`, `metrics.py`, `briefing.py`), `eval/`, `demo/`, `routes/`. `ask.py` is not on the P0 path.
 
 ## Conventions
 

@@ -10,18 +10,18 @@ This repo was generated from [azizu06/hackathon-agent-board](https://github.com/
 
 ## Who owns what
 
-The application is not created yet. Roles match `docs/TEAM_PLAN.md`. Paths match the uploaded guide's module map. The crosswalk is in `docs/IMPORT_NOTES.md`.
+The application is not created yet. Scope is the understanding-transfer flow in `docs/PRODUCT.md`. Roles and paths are in the table and in `docs/TEAM_PLAN.md`.
 
 | Person | Login | Role | Owns |
 |---|---|---|---|
 | Ethan Meza | `ethnmz` | Frontend & Demo | `frontend/`, `docs/DEMO_SCRIPT.md` |
 | Diego Lozano | `Navibytes` | Bridge & Voice | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
-| Akshi Biswal | `biswalakshi` | AI | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py`, `backend/app/ask.py`, `backend/app/routes/ask.py`, `backend/tests/test_scenario.py` |
-| Aditri Tangeti | `aditrit06` | Ledger Core | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py` |
+| Akshi Biswal | `biswalakshi` | AI | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py` |
+| Aditri Tangeti | `aditrit06` | Ledger Core | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py`, `backend/tests/test_scenario.py` |
 
 Logins recorded for these docs: `ethnmz`, `Navibytes`, `biswalakshi`, `aditrit06`. The board tag for each is written in `AGENTS.md`. Shared changes to `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md` need all four people.
 
-Cloning does not log you in. The next local step is `gh auth login` as yourself, then `tools/board whoami`. Use your own branch and a separate worktree for review.
+Cloning does not log you in. The next local step, when you choose to set up a machine, is `gh auth login` as yourself, then `tools/board whoami`. One person and one agent may keep the checkout they already have. A second agent on that machine needs another worktree.
 
 ## How the board works
 
