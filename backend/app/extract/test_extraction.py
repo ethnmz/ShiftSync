@@ -12,11 +12,14 @@ from app.llm import client
 
 class ExtractionTest(unittest.IsolatedAsyncioTestCase):
     async def test_retry_preserves_only_supported_ups_fact(self):
-        statement = "UPS-B maintenance is mostly finished."
-        fact = dict(slot="work_status", value="incomplete", quote=statement, certainty="unverified")
+        quote = "UPS-B maintenance is mostly finished."
+        long_quote = " ".join(["pending"] * 31)
+        statement = f"{quote} {long_quote}"
+        fact = dict(slot="work_status", value="incomplete", quote=quote, certainty="unverified")
         item = dict(kind="vendor_work", title="UPS-B maintenance", asset_id="UPS-B", is_decision=False,
-                    facts=[fact, dict(fact, quote="UPS-B is cleared for testing."),
-                           dict(fact, quote=statement.lower()), dict(fact, value="word " * 16)])
+                    facts=[dict(fact, quote="mostly finished."), dict(fact, quote=long_quote),
+                           fact, dict(fact, quote="UPS-B is cleared for testing."),
+                           dict(fact, quote=quote.lower()), dict(fact, value="word " * 16)])
         reply = {"items": [item, dict(item, title="word " * 9)]}
         with tempfile.TemporaryDirectory() as folder, \
                 patch.dict(os.environ, LLM_PROVIDER_EXTRACT="nemotron", NEMOTRON_MODEL="offline"), \
@@ -29,6 +32,6 @@ class ExtractionTest(unittest.IsolatedAsyncioTestCase):
         kept_item, = result.items
         kept_fact, = kept_item.facts
         self.assertEqual((kept_item.asset_id, kept_fact.normalized, kept_fact.certainty, kept_fact.quote),
-                         ("UPS-B", "incomplete", "unverified", statement))
+                         ("UPS-B", "incomplete", "unverified", quote))
         self.assertTrue(any("title exceeds 8 words" in line for line in logs.output))
         self.assertTrue(any("value exceeds 15 words" in line for line in logs.output))
