@@ -1,0 +1,137 @@
+{
+  "name": "ShiftSync demo: Night (Maya) → Day (Jordan)",
+  "timezone": "America/Chicago",
+  "notes": "UTC timestamps; local = UTC-6. Replayed by POST /api/demo/step/{n} through the real endpoints, and asserted by backend/tests/test_demo_scenario.py. Items matched by asset/kind, facts by slot + normalized + certainty. Answers here are fictional and supplied by the operator; nothing in `expect` may be produced by AI without a source quote.",
+
+  "history": {
+    "description": "One unresolved follow-up carried over from yesterday's handoff (Problem 4: unresolved items persist).",
+    "items": [
+      { "kind": "maintenance", "asset_ids": ["CRAC-3"], "title": "CRAC 3 sensor recalibration",
+        "facts": [ { "slot": "work_status", "normalized": "pending", "certainty": "confirmed",
+                     "quote": "CRAC 3 return-air sensor still needs recalibration", "speaker": "rob" } ],
+        "followup": { "description": "Controls tech to recalibrate CRAC 3 return-air sensor", "owner": "rob", "deadline": "2026-11-09T00:00:00Z", "status": "open" } }
+    ]
+  },
+
+  "steps": [
+    { "n": 1, "at": "2026-11-08T12:35:00Z", "local": "Sun 06:35", "actor": "maya",
+      "action": "POST /api/handoffs { outgoing_id: maya, incoming_id: jordan }",
+      "expect": { "state": "draft", "carried_over_items": ["CRAC-3"] } },
+
+    { "n": 2, "at": "2026-11-08T12:35:30Z", "local": "Sun 06:35", "actor": "maya", "source": "voice_web", "live": true,
+      "problems": [1, 4, 5],
+      "action": "POST /api/handoffs/{id}/statements (audio)",
+      "text": "UPS-B maintenance is mostly finished. The vendor is coming back tomorrow. Generator 1 looks good. I'm not sure what happened with the cooling inspection, but everything else should be okay.",
+      "expect": {
+        "state": "clarifying",
+        "items": [
+          { "asset": "UPS-B", "kind": "vendor_work", "priority": "critical",
+            "facts": [ { "slot": "work_status", "normalized": "incomplete", "certainty": "unverified", "floor_term": "mostly" },
+                       { "slot": "vendor_return", "certainty": "confirmed", "value_contains": "tomorrow" } ] },
+          { "asset": "GEN-1", "kind": "observation", "priority": "routine",
+            "facts": [ { "slot": "condition", "certainty": "reported", "floor_term": "looks good" } ] },
+          { "asset": null, "asset_mention_contains": "cooling inspection", "kind": "inspection", "priority": "critical",
+            "facts": [ { "slot": "work_status", "normalized": "unknown", "certainty": "unknown", "floor_term": "not sure" } ] },
+          { "kind": "general_claim", "priority": "important",
+            "facts": [ { "certainty": "unverified", "value_contains": "everything else" } ] }
+        ],
+        "must_not": [ "any fact with certainty confirmed for UPS-B work_status or operational_clearance",
+                      "GEN-1 condition confirmed",
+                      "any owner or deadline set" ],
+        "gaps_top3_in_order": [
+          { "item": "UPS-B", "type": "vague_statement", "slots": ["remaining_work", "rationale"] },
+          { "item": "UPS-B", "type": "missing_required", "slots": ["operational_clearance"] },
+          { "item": "cooling inspection", "type": "uncertain_claim", "slots": ["equipment_scope", "work_status"] }
+        ],
+        "first_question_about": "why UPS-B is unfinished / what remains"
+      } },
+
+    { "n": 3, "at": "2026-11-08T12:36:20Z", "local": "Sun 06:36", "actor": "maya", "source": "voice_web",
+      "problems": [1, 3],
+      "question_shown": "You said UPS-B is \"mostly finished.\" What work remains, and why wasn't it completed?",
+      "action": "POST /api/handoffs/{id}/questions/{q1}/answer",
+      "text": "The replacement battery module didn't arrive, so the vendor couldn't do the final load test. That's what they're coming back for.",
+      "expect": {
+        "facts": [ { "item": "UPS-B", "slot": "remaining_work", "certainty": "confirmed", "value_contains": "load test" },
+                   { "item": "UPS-B", "slot": "rationale", "certainty": "confirmed", "value_contains": "battery module" } ],
+        "item_is_decision_or_has_rationale": "UPS-B",
+        "next_question_about": "UPS-B operational clearance"
+      } },
+
+    { "n": 4, "at": "2026-11-08T12:37:10Z", "local": "Sun 06:37", "actor": "maya", "source": "voice_web",
+      "problems": [1],
+      "question_shown": "Is UPS-B currently cleared for normal operation?",
+      "action": "POST /api/handoffs/{id}/questions/{q2}/answer",
+      "text": "No. It's still in maintenance bypass. It's not cleared until the vendor finishes the load test and signs off.",
+      "expect": {
+        "facts": [ { "item": "UPS-B", "slot": "operational_clearance", "normalized": "not_cleared", "certainty": "confirmed" },
+                   { "item": "UPS-B", "slot": "required_verification", "certainty": "confirmed", "value_contains": "sign" } ],
+        "followups_created": [ { "item": "UPS-B", "owner_label": "To be assigned" } ],
+        "next_question_about": "cooling inspection: which equipment, what is known"
+      } },
+
+    { "n": 5, "at": "2026-11-08T12:38:00Z", "local": "Sun 06:38", "actor": "maya", "source": "voice_web",
+      "problems": [4],
+      "question_shown": "You said you're \"not sure\" what happened with the cooling inspection. Which equipment was it, and is anything confirmed about the result?",
+      "action": "POST /api/handoffs/{id}/questions/{q3}/answer",
+      "text": "It was Chiller 2. The vendor was here in the afternoon but I never got a report. I honestly don't know if they finished.",
+      "expect": {
+        "items": [ { "asset": "CHL-2", "kind": "inspection",
+                     "facts": [ { "slot": "equipment_scope", "certainty": "confirmed", "value_contains": "Chiller 2" },
+                                { "slot": "work_status", "normalized": "unknown", "certainty": "unknown" } ] } ],
+        "followups_created": [ { "item": "CHL-2", "missing_information_contains": "report", "owner_label": "To be assigned" } ],
+        "state": "in_review",
+        "budget_used": 3,
+        "not_asked_includes": [ { "item": "general_claim", "slot": "scope" }, { "item": "UPS-B", "slot": "owner" } ]
+      } },
+
+    { "n": 6, "at": "2026-11-08T12:39:30Z", "local": "Sun 06:39", "actor": "maya",
+      "action": "PATCH each critical fact review_state=operator_confirmed; POST /review/confirm-routine; POST /submit",
+      "problems": [5],
+      "expect": { "state": "submitted", "facts_review_state": "all operator_confirmed", "certainties_unchanged": true,
+                  "metrics": { "clarification_questions_asked": 3, "shift_a_seconds_max": 300 } } },
+
+    { "n": 7, "at": "2026-11-08T13:00:00Z", "local": "Sun 07:00", "actor": "jordan",
+      "action": "GET /api/handoffs/{id}/briefing",
+      "problems": [2, 3, 4],
+      "expect": {
+        "order": ["UPS-B", "CHL-2", "general_claim", "CRAC-3 (carried over)", "GEN-1"],
+        "lines_contain": [ "UPS-B", "not cleared", "load test", "battery module", "Chiller 2", "unknown", "owner to be assigned" ],
+        "lines_must_not_contain": [ "UPS-B complete", "cleared for", "safe" ],
+        "disclaimer_present": true
+      } },
+
+    { "n": 8, "at": "2026-11-08T13:01:00Z", "local": "Sun 07:01", "actor": "jordan",
+      "action": "POST /api/handoffs/{id}/acknowledge, then PATCH /api/followups/{chl2} { owner_id: jordan, deadline: 16:00Z }",
+      "expect": { "state": "acknowledged", "status_line": "Acknowledged, understanding not yet verified",
+                  "followup_assigned": { "item": "CHL-2", "owner": "jordan", "assigned_by": "jordan" } } },
+
+    { "n": 9, "at": "2026-11-08T13:02:00Z", "local": "Sun 07:02", "actor": "jordan", "source": "voice_web", "live": true,
+      "problems": [2],
+      "action": "POST /verification/start; POST /verification/{v1}/answer",
+      "question_shown": "What is the current status of UPS-B, and what must be verified before testing?",
+      "text": "Maintenance is complete, so we can start testing.",
+      "expect": { "verdict": "inconsistent", "misconception": "treated_incomplete_as_complete",
+                  "feedback_contains": ["inconsistent with the handoff", "incomplete", "authorized procedures"],
+                  "evidence_quotes_from": ["S(step 2)", "S(step 3)", "S(step 4)"],
+                  "feedback_must_not_contain": ["you may proceed", "safe"] } },
+
+    { "n": 10, "at": "2026-11-08T13:03:00Z", "local": "Sun 07:03", "actor": "jordan", "source": "voice_web",
+      "action": "POST /verification/{v1}/answer (attempt 2)",
+      "text": "UPS-B isn't finished. The final load test is still pending because the battery module didn't arrive. It's in maintenance bypass and not cleared until the vendor finishes the test and signs off.",
+      "expect": { "verdict": "consistent", "check_status": "verified", "attempts": 2 } },
+
+    { "n": 11, "at": "2026-11-08T13:04:00Z", "local": "Sun 07:04", "actor": "jordan", "source": "text_web",
+      "action": "POST /verification/{v2}/answer",
+      "question_shown": "What do we know about the Chiller 2 cooling inspection, and who is following up?",
+      "text": "The vendor inspected Chiller 2 but nobody has a report, so the result is unknown. I'm following up by 10.",
+      "expect": { "verdict": "consistent", "attempts": 1,
+                  "state": "verified",
+                  "status_line": { "open_followups": 3, "unassigned_followups": 1 },
+                  "metrics": { "verification_first_attempt_rate": 0.5, "misunderstandings_caught": 1 } } },
+
+    { "n": 12, "at": "2026-11-08T13:10:00Z", "local": "Sun 07:10", "actor": "dana", "optional": true,
+      "action": "GET /api/supervisor/summary; PATCH /api/followups/{upsb} { owner_id: sam, deadline: 2026-11-09T15:00:00Z }",
+      "expect": { "before": { "unassigned": 1 }, "after": { "unassigned": 0 }, "assigned_by": "dana" } }
+  ]
+}

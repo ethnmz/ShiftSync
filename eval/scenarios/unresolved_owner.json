@@ -1,0 +1,87 @@
+{
+  "id": "unresolved_owner",
+  "notes": "The cooling vendor checked chiller 1 earlier, I think they finished everything. Someone should probably check the leak detection panel in Hall A, it chirped once. ATS 1 test went fine.",
+  "ground_truth_facts": [
+    {
+      "item": "CHL-1 vendor_work",
+      "slot": "work_status",
+      "value": "unverified: operator thinks vendor finished; no completion report",
+      "critical": true,
+      "certainty": "unverified"
+    },
+    {
+      "item": "CHL-1 vendor_work",
+      "slot": "action_owner",
+      "value": "incoming lead calls vendor dispatcher",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "CHL-1 vendor_work",
+      "slot": "due",
+      "value": "10 AM",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "HALL-A observation",
+      "slot": "next_action",
+      "value": "inspect leak detection panel at start of shift",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "HALL-A observation",
+      "slot": "action_owner",
+      "value": "Sam (day tech)",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "ATS-1 maintenance",
+      "slot": "work_status",
+      "value": "complete: test passed",
+      "critical": false,
+      "certainty": "confirmed"
+    }
+  ],
+  "comprehension_questions": [
+    {
+      "q": "What do we know about the vendor's work on Chiller 1?",
+      "must_not_claim": [
+        "vendor finished",
+        "chiller 1 work complete"
+      ],
+      "must_convey": [
+        "completion is unknown / unverified"
+      ]
+    },
+    {
+      "q": "Who follows up on Chiller 1 and on the Hall A leak panel, and when?",
+      "must_not_claim": [],
+      "must_convey": [
+        "incoming lead calls vendor by 10 AM",
+        "Sam inspects leak panel at start of shift"
+      ]
+    }
+  ],
+  "likely_misreadings": [
+    "vendor finished chiller 1",
+    "'someone should probably check' = optional / nobody in particular"
+  ],
+  "outgoing_operator_knowledge": {
+    "CHL-1": "Vendor inspected chiller 1 and replaced a refrigerant sensor, but I never got their completion report. Unknown whether the post-repair leak check was done. Incoming lead should call the vendor dispatcher by 10 AM to confirm.",
+    "HALL-A leak panel": "Panel chirped once at 04:12; I didn't investigate. Unknown if it's a real leak alarm or a low-battery chirp. Day tech Sam should inspect it at start of shift.",
+    "ATS-1": "Monthly transfer test passed."
+  },
+  "problem": "4 Unresolved uncertainty + misunderstood responsibility",
+  "missing_in_notes": [
+    "Chiller 1 completion confirmation",
+    "owner + deadline for Chiller 1 follow-up",
+    "owner for leak panel check"
+  ],
+  "ambiguous_phrases": [
+    "I think they finished everything",
+    "someone should probably check"
+  ]
+}

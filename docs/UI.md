@@ -1,35 +1,55 @@
-# UI
+# UI Spec
 
-Audience: the two shift leads. The pitch is the conversation, not a dashboard. Ethan owns `frontend/`. Build screens against `docs/API.md`. The app is not created yet. Poll `GET /handoff/current` every 1.5 seconds.
+**Design goals:** visually polished, modern, responsive (laptop, tablet, wall screen). Built for exhausted operators: large touch targets (≥ 44 px), short text, one primary action per view, voice first. Light and dark themes; default dark for night shift.
 
-Color is never the only signal. `unknown` and UNASSIGNED use a text label, not a red "facility unsafe" banner. Do not display a site-wide safe or unsafe certification.
+## Shared visual language (use everywhere, consistently)
+**Certainty badges** (icon + word + color, never color alone):
+| Certainty | Badge | Color |
+|---|---|---|
+| confirmed | ✓ Confirmed | green |
+| reported | ◔ Reported | blue |
+| unverified | ⚠ Unverified | amber |
+| unknown | ? Unknown | violet |
 
-## 1. `/handoff/out` Outgoing note
+**Review state:** small **AI** chip on facts not yet reviewed; ✎ "Edited" chip on operator edits (hover shows the AI's original). **Priority:** Critical (red bar) · Important (amber bar) · Routine (gray, collapsed).
+**Source evidence:** every fact has a quote icon; click/hover shows the verbatim statement with the quoted span highlighted, plus ▶ audio. (Source highlighting is P1; plain quotes are P0.)
+**Status line** (on every handoff): `Submitted 06:39 · Acknowledged 07:01 · Understanding verified 07:04 · 3 open follow-ups (1 to be assigned)`. Acknowledged and Verified are always shown as separate chips.
+**Copy rule:** never show "safe", "cleared", "complete" or "resolved" unless a confirmed fact says so. Standing disclaimer on Shift B screens: *"Acknowledging or verifying this handoff does not close open issues or confirm equipment is safe to operate."*
 
-One voice or text capture for the end-of-shift note. After ingest, show a single question card: the question text, who it is for, and an answer box. Show `questions_asked` of `budget` (for example "1 of 3"). No list of extra questions.
+App shell: top bar with ShiftSync logo + tagline, user switcher (demo: Maya / Jordan / Dana), nav: **Create · Receive · History · Supervisor · Evaluation**.
 
-## 2. `/handoff/record` Confirmed handoff
+## Screen 1: Shift A, Create Handoff (`/create`)
+Three-column flow on desktop, stacked on tablet:
+1. **Capture (left)**: huge round **Record** button (hold or tap-toggle, live waveform, timer), "Type instead" text area, live/completed transcript with uncertain words underlined amber/violet (`mostly`, `not sure`, `looks good`).
+2. **Clarify (middle)**: "ShiftSync needs 3 quick answers" with progress `1 of 3`. One card at a time: question, *why asked* tag (e.g. `"mostly finished": what remains?`), mic button, text field, and an outlined **I don't know** button. Answered cards collapse into a stack above, showing their effect ("✓ added: remaining work, reason"). A muted section **Not asked (low priority)** lists the gaps skipped by design.
+3. **Structured handoff (right)**: equipment cards update live as facts arrive (animate certainty changes). Each fact row: slot label · value · certainty badge · AI chip · ✓ confirm · ✎ edit. Follow-ups section: description, owner ("To be assigned"), deadline.
+Footer: **Review & submit** opens a review drawer: critical facts need individual ✓ (one tap each); "Confirm routine items" button; Submit (disabled with a reason until blockers are cleared). Show elapsed time ("2m 51s").
 
-Shown when status is `confirmed`. Three groups, in this order:
+## Screen 2: Shift B, Receive Handoff (`/receive/:id`)
+- Header: from Maya → to Jordan, submitted time, status line, disclaimer.
+- **Briefing**: headline + ≤ 6 lines, each with certainty badges and a source link.
+- **Equipment cards**, critical and unresolved first: what · why · certainty · what must be verified · next action · owner/deadline · source quotes (expand). Carried-over items are tagged "Carried over from 11/07".
+- **Acknowledge receipt** button (secondary style) → chip "Acknowledged, understanding not yet verified".
+- **Verify understanding** panel (primary): one question at a time, mic + text. After answering, the result shows:
+  - verdict chip: ✓ Consistent / ◐ Partially consistent / ✗ Inconsistent with the handoff
+  - **What you said** (with contradicting phrases highlighted red) vs **What the handoff says** (facts with badges) + **Evidence** (Maya's quotes, ▶ audio)
+  - feedback text, then **Try again** (attempt 2/2). After 2 attempts: "Talk to Maya, then mark clarified in person" (lead only).
+- **Follow-ups** list: assign owner/deadline (lead/supervisor only), close with a statement.
 
-- Confirmed facts, each with its quote.
-- Reported facts, each marked hedged.
-- Unknowns. UNASSIGNED unknowns name the missing owner and due time and offer two fields a person must fill. Assigned unknowns show the person and the time they entered.
+## Screen 3: Handoff History (`/history`) (P1)
+Table/cards: handoff, from→to, timestamps per stage, status chips, open questions, pending acknowledgments, verification result. Detail view: full timeline (statements, questions and answers, edits with AI originals, verification attempts, follow-up assignments) with source evidence.
 
-A primary button "Ask the incoming lead" calls `POST /check/start`. It stays disabled while any unknown is UNASSIGNED. The disabled state says the record cannot be signed off inside the app. It does not say the building is unsafe.
+## Screen 4: Supervisor View (`/supervisor`) (P1, minimal)
+Four tiles: **Pending handoffs** · **Unresolved questions** · **Outstanding acknowledgments** · **Verification status** (verified / with assistance / in progress), plus **Follow-ups: open · to be assigned · overdue** with inline assign. Handoff quality and completion only, with no equipment telemetry or facility monitoring.
 
-## 3. `/handoff/in` Incoming check
+## Screen 5: Evaluation (`/evaluation`) (P1)
+Table: rows Normal handoff / AI summary / ShiftSync; columns are the metrics in `EVALUATION.md`, with best values highlighted. "Incorrect facts introduced by AI" gets a prominent column. Drill-down shows side-by-side artifacts for one scenario. Footnote: simulated operators, same model, mean of 3 runs, run timestamp. Empty state until a real run exists; **no placeholder numbers**.
 
-One open-ended question. The incoming lead answers in text or by voice. When status is `correcting`, show the correction under the answer, then the follow-up question. Do not offer a single "I acknowledge" button as a substitute.
+## Demo controls
+Hidden panel (press `D`): reset, step through `demo/scenario.json`, simulated clock, LLM provider indicator.
 
-## 4. `/handoff/signed` Signed record
-
-Status `signed`. List facts, grades, corrections, and quotes. Footer line, always visible: "This record checks what was said against Shift A's confirmed note. It does not show that someone understood, and it does not clear equipment."
-
-## 5. `/` Support strip
-
-Shift name, simulated clock, and whether app signoff is blocked. Link to the active handoff screen. This strip is not the demo. Do not build a lane board, a floor plan, or a 3D view for P0.
-
-## Demo control
-
-A hidden panel for the people running the demo may call `POST /demo/clock` and, once a seed script exists, reset. Do not put that panel in the submitted video.
+## Implementation notes
+- React Router routes above; TanStack Query (`refetchInterval: 1500` on the active handoff).
+- `MediaRecorder` → `audio/webm` upload; show "Transcribing…" skeleton; graceful text fallback.
+- Components: `CertaintyBadge`, `FactRow`, `EquipmentCard`, `QuestionCard`, `EvidenceQuote`, `StatusLine`, `VerificationResult`, `FollowUpRow`, `RecordButton`.
+- Build every screen against fixtures first: `handoff_clarifying.json`, `handoff_in_review.json`, `handoff_submitted.json`, `verification_inconsistent.json`, `supervisor_summary.json`.

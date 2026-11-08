@@ -1,5 +1,5 @@
-# Proposed interfaces
+# Not a second contract
 
-The proposed shapes are `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. They match `docs/PRODUCT.md`.
+Use `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. They come from the final spec pack.
 
-Ethan confirmed the scope. The other three owners have not approved these fields. Do not treat this folder as a second contract, and do not revive the withdrawn equipment-event examples.
+`docs/CONTRACT_MIGRATION.md` lists differences from the in-person nine-item agreement. Do not keep a parallel set of routes here.

@@ -1,87 +1,92 @@
-# Product: ShiftSync
+# Product Spec: ShiftSync
 
-Status: proposed spec. Ethan confirmed this scope. Diego, Akshi, and Aditri have not yet signed the shared interfaces in `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. Until they do, build to this document and treat a field change as a team decision.
+This is the final pack. It is the build target. `docs/CONTRACT_MIGRATION.md` records where it differs from an earlier in-person API agreement.
 
-`CLAUDE.md` is the product direction. This file is the feature list for that direction.
+**Tagline:** Less chaos. Clearer communication. Faster handoffs.
 
-## Problem
+## 1. Problem
+Critical operational information is frequently **lost, misunderstood, left unresolved or communicated ambiguously** during shift-to-shift handoffs. Basic handoff tools (organized notes, task carry-over, acknowledgment buttons, audit logs) already exist; other teams will build AI summarizers, meeting assistants or handoff dashboards. None of these checks whether understanding actually transferred.
 
-Information is communicated, but the meaning does not always transfer. Shift A can say "the UPS vendor is coming back tomorrow, everything should be fine" and mean the work is unfinished. Shift B can hear that maintenance is done.
+**Our differentiator is not a better handoff document. It's improving and verifying the transfer of understanding between shifts.** ShiftSync stands out by:
+1. Detecting important missing information **before Shift A leaves**.
+2. Clarifying what operators actually **mean**.
+3. Preserving the **reasoning** behind decisions.
+4. **Tracking uncertainty** instead of hiding it.
+5. **Testing whether Shift B correctly understands** critical information.
+6. Doing all of this with **minimal operator effort**.
 
-Note lists, carried-forward tasks, and acknowledgment buttons already exist in other tools. Those are plumbing. They are not the pitch.
+## 2. The five problems and solutions
 
-## What we build
+### Problem 1: Hidden assumptions → Clarification Engine
+Operators say "everything is fine", "it's handled", "the vendor should be done".
+- Detect ambiguous, incomplete or vague operational language.
+- Identify what information is missing (required facts per item type, `config/slots.yaml`).
+- Generate specific, situation-relevant follow-up questions **before Shift A submits**.
+- Never assume a task is complete without explicit confirmation.
+> Shift A: "The UPS vendor should be done tomorrow." → ShiftSync: "What work remains unfinished, and is UPS-B currently cleared for normal operation?"
 
-ShiftSync is a short two-way handoff over iMessage, with a web screen for the leads.
+### Problem 2: False understanding → Two-Way Understanding Verification
+- Concise, prioritized briefing for Shift B.
+- Targeted, open-ended questions about the most important unresolved items.
+- Shift B explains in natural language (voice or text).
+- Compare with the verified handoff; identify important misunderstandings and **show the original evidence** (Shift A's quotes).
+- Allow clarification and another attempt.
+- **Record acknowledgments separately from verified understanding.**
+> ShiftSync: "What is the current status of UPS-B, and what must be verified before testing?" · Shift B: "Maintenance is complete, so we can start testing." · ShiftSync: "That interpretation is inconsistent with the handoff. Maintenance remains incomplete, and clearance must be verified through authorized procedures." *(evidence quotes shown)*
 
-1. The outgoing lead sends one end-of-shift voice note.
-2. The **Handoff Interviewer** asks only the missing critical questions, one at a time, at most three.
-3. The record that leaves Shift A states each fact as `confirmed`, `reported`, or `unknown`. An unknown without a human-assigned owner and due time is **UNASSIGNED** and blocks app signoff.
-4. The **Understanding Check** asks the incoming lead open-ended questions, compares the answers with Shift A's confirmed record, and corrects mismatches.
-5. Signoff stores a record with the quotes and the correction history. It does not certify understanding or a safe site.
+### Problem 3: Lost reasoning → Decision Context Preservation
+- Identify decisions (postponed, bypassed, deferred, kept in manual…).
+- Extract the rationale when given; ask when it's important and missing.
+- Preserve restrictions, conditions and exceptions.
+- Show Shift B what happened **and why**, linked to the source.
+> Shift A: "We postponed UPS-B testing." → "Why was testing postponed, and what must happen before it can be rescheduled?" → "The vendor hasn't delivered the replacement component."
 
-Product principle: maximum understanding, minimum effort.
+### Problem 4: Unresolved uncertainty → Uncertainty & Follow-Up Tracking
+- Detect uncertain language ("probably", "I think", "maybe", "not sure", "mostly", "looks good").
+- **Never** auto-convert uncertain statements into confirmed facts (code-enforced).
+- Classify every fact: **confirmed / reported / unverified / unknown** (definitions in `DATA_MODEL.md`).
+- Ask whether important claims have been verified.
+- Preserve unresolved questions **across handoffs** (carry-over).
+- **Authorized users** (leads, supervisors) assign follow-up owners and deadlines; until then the owner shows **"To be assigned"**.
+- Unresolved issues stay visible until verified or closed with evidence.
+> "I think the cooling vendor finished maintenance." → "Has maintenance completion been confirmed?" → "No, I haven't received confirmation." → Chiller 2 · Maintenance status: **Unverified** · Missing: vendor completion confirmation · Follow-up owner: **To be assigned**
 
-## Five failure modes
+### Problem 5: Handoff fatigue → Adaptive, Low-Friction Experience
+- Voice-first, text alternative.
+- Auto-extract structure from natural speech; prepopulate everything already said.
+- Never ask what's already answered; ask only the most relevant missing questions, most important first (budget: 3 by default).
+- Short answers, quick corrections (tap to edit any field), easy review.
+- One-tap **"I don't know"**, so nobody is forced to guess.
+- Mandatory safety-related checks are kept even when simplifying.
+> "Generator 1 maintenance is complete. UPS-B testing is still pending. Vendor returns at 9 AM, and Shift B Lead will follow up." → ShiftSync recognizes owner, schedule and outstanding work, and asks only: "Has UPS-B's operational clearance been confirmed?"
 
-| # | Failure | What the product does |
-|---|---|---|
-| 1 | Hidden assumptions ("it's handled") | Detect vague language and ask for the missing operational detail. |
-| 2 | False understanding (a tap with no explanation) | Open-ended check, then a correction loop. A click is not the check. |
-| 3 | Lost reasoning (knows what, not why) | Require `rationale`, `restore_condition`, and `contingency` when that slot is critical. |
-| 4 | Unresolved uncertainty that looks complete | Status is `confirmed`, `reported`, or `unknown`. Unknowns need a person and a due time. |
-| 5 | Handoff fatigue | Ask only missing critical slots, default budget 3, one question at a time. |
+## 3. Core user journey
+1. Outgoing handoff (voice/text) → 2. AI analysis → 3. Adaptive clarification → 4. Handoff review and submit → 5. Incoming briefing → 6. Understanding verification → 7. Completion tracking.
 
-## Facts
+**Completion semantics (shown in the UI, never blurred):**
+- **Submitted**: Shift A reviewed and submitted.
+- **Acknowledged**: Shift B confirmed receipt. *This does not mean understood.*
+- **Understanding verified**: Shift B answered every critical verification question correctly (after at most 2 attempts, or the lead marks "clarified in person", which is logged).
+- **Open follow-ups**: listed separately. A handoff can be fully verified *and* still have open follow-ups. Neither acknowledgment nor verification closes an operational issue or implies it's safe.
 
-- `confirmed`: the speaker stated it outright, the quote verifies against the transcript, and the hedge check did not fire.
-- `reported`: the speaker hedged ("I think", "should be fine", "probably") or the model claimed `confirmed` and code downgraded it.
-- `unknown`: the slot is missing, or the speaker said they do not know. Silence does not fill it.
+## 4. Priorities
+**P0:** voice/text handoff creation · structured extraction · adaptive clarification · uncertainty tracking · incoming briefing · understanding verification · persistent handoff state.
+**P1:** handoff history · supervisor overview · source highlighting · additional ingestion (Photon iMessage voice notes) · evaluation dashboard.
+**P2:** Outlook integration (only vendor schedule info that feeds a handoff) · additional notification channels · advanced analytics.
 
-Code in `facts/status.py` applies the hedge lexicon from `config/slots.yaml`. The model cannot upgrade a hedge. Code in `facts/verify.py` drops a fact whose quote is not in the transcript at fuzzy ratio ≥ 0.85.
+**Out of scope, always:** predictive maintenance, equipment control, facility-wide monitoring, alarms/BMS/DCIM, anything that authorizes equipment operations.
 
-Owners, due times, and equipment dependencies come from a human answer or from configuration. The model does not invent them.
+## 5. Success criteria for the demo
+- Shift A's effort: one recording + ≤ 3 short answers + one review tap, under 3 minutes.
+- "Mostly finished", "looks good", "not sure", "should be okay" are all classified correctly; **none** become confirmed.
+- What Shift A genuinely doesn't know stays **unknown/unverified**, with "To be assigned" until an authorized user assigns it.
+- Shift B confidently misreads UPS-B → ShiftSync catches it, shows Maya's quotes → second attempt correct.
+- Acknowledgment and verification are visibly separate; open follow-ups remain open after completion.
+- Benchmark numbers on the Evaluation screen come from actual runs.
 
-## Interview
-
-Critical gaps are chosen by `interview/gaps.py` and ordered by `interview/planner.py`. Safety slots come first, then an unknown with no owner, then rationale. Non-safety gaps past the budget are stored as `not_asked_low_priority`. They are not shown as done.
-
-The outgoing budget is 3 questions for that lead. One question is in flight at a time.
-
-## Understanding check
-
-`check/questions.py` picks the next open-ended question from confirmed facts, safety slots first. `check/grade.py` may label an answer `aligned`, `misunderstood`, or `not_mentioned`. Code accepts `aligned` only when the evidence quote verifies against the answer text. In doubt, the grade stays off `aligned`.
-
-A `misunderstood` or `not_mentioned` safety fact shows a correction and waits for another answer. Signoff stays blocked while any confirmed safety fact is still in that state. The grade means the answer text matched the record. It does not prove the person understood.
-
-## Signoff
-
-`handoff/gate.py` allows signoff only when:
-
-- no unknown is UNASSIGNED
-- no confirmed safety fact is still `misunderstood` or `not_mentioned`
-- the outgoing budget has been applied (asked, or explicitly not asked because it was low priority)
-
-The gate is an application lock. It does not control equipment and it does not clear anyone to do physical work.
-
-## Priority
-
-**P0, the demo:** ingest one voice note, extract source-backed facts, run the interview within the budget, show explicit unknowns, run the check and one correction, sign the record.
-
-**P1:** the four evaluation metrics in `docs/EVALUATION.md` on synthetic scenarios. No published scores until a run exists.
-
-**P2, not this core:** a conflict warning that uses dependencies already written in configuration, stale-item reminders, and a free-form ask box. Do not build a second ledger product beside the interview. Do not add those until the P0 path works and the team agrees.
-
-## Out of scope
-
-Real building controls, a certified safe state, a 3D facility view, multi-site support, and a claim that the team has qualified for a sponsor prize.
-
-## Demo success
-
-Using the fictional UPS vendor sentence in `docs/DEMO_SCRIPT.md`:
-
-- The hedged line cannot become a `confirmed` "maintenance is done."
-- The interview asks what is unfinished, within the three-question budget.
-- An unknown with no owner blocks signoff until a person assigns an owner and a due time.
-- The incoming answer "maintenance is done" is corrected against the confirmed record.
-- The signed screen shows quotes. It does not say the site is safe.
+## 6. Pitch spine
+1. "Both shifts think the handoff worked. They understood different things."
+2. Summaries make handoffs prettier, not understood. Our differentiator is verifying the transfer of understanding.
+3. Live demo of the full interaction (not just LLM output).
+4. Evaluation vs a normal handoff and a basic AI summary, including **incorrect facts introduced by AI**.
+5. "Less chaos. Clearer communication. Faster handoffs."

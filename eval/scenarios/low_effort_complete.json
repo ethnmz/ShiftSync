@@ -1,0 +1,68 @@
+{
+  "id": "low_effort_complete",
+  "problem": "5 Handoff fatigue: a good handoff should get \u2264 1 question",
+  "notes": "Generator 1 maintenance is complete. UPS-B testing is still pending. Vendor returns at 9 AM, and Shift B lead will follow up.",
+  "outgoing_operator_knowledge": {
+    "GEN-1": "Oil change and filter swap done and signed off at 03:00. Normal.",
+    "UPS-B": "Load test postponed because the vendor's load bank failed. UPS-B is in maintenance bypass and NOT cleared for normal operation until the vendor completes the load test and signs off. Vendor returns 9 AM. Shift B lead owns the follow-up."
+  },
+  "ground_truth_facts": [
+    {
+      "item": "GEN-1",
+      "slot": "work_status",
+      "value": "complete",
+      "certainty": "confirmed",
+      "critical": false
+    },
+    {
+      "item": "UPS-B",
+      "slot": "work_status",
+      "value": "testing pending",
+      "certainty": "confirmed",
+      "critical": true
+    },
+    {
+      "item": "UPS-B",
+      "slot": "vendor_return",
+      "value": "9 AM",
+      "certainty": "confirmed",
+      "critical": false
+    },
+    {
+      "item": "UPS-B",
+      "slot": "owner",
+      "value": "Shift B lead",
+      "certainty": "confirmed",
+      "critical": true
+    },
+    {
+      "item": "UPS-B",
+      "slot": "operational_clearance",
+      "value": "not cleared; maintenance bypass",
+      "certainty": "confirmed",
+      "critical": true
+    }
+  ],
+  "missing_in_notes": [
+    "UPS-B operational clearance"
+  ],
+  "ambiguous_phrases": [],
+  "expected_shiftsync_questions_max": 1,
+  "expected_question_topic": "UPS-B operational clearance",
+  "comprehension_questions": [
+    {
+      "q": "What is the status of UPS-B and what must happen before it returns to normal operation?",
+      "must_convey": [
+        "testing pending",
+        "not cleared / in maintenance bypass until vendor completes load test and signs off"
+      ],
+      "must_not_claim": [
+        "UPS-B cleared",
+        "UPS-B work complete"
+      ]
+    }
+  ],
+  "likely_misreadings": [
+    "UPS-B is running normally while waiting for a routine test"
+  ]
+}

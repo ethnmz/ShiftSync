@@ -1,0 +1,69 @@
+# Deterministic rules. LLMs never set priority, handoff state, verdict floors or follow-up ownership.
+
+item_priority:
+  # First match wins. Conditions refer to the item's current facts.
+  - id: power_cooling_not_complete_or_uncertain
+    when: { asset_category: [power, cooling],
+            any_fact: [ { slot: work_status, normalized: [incomplete, pending, not_started, unknown] },
+                        { slot: work_status, certainty: [unverified, unknown] },
+                        { slot: operational_clearance, normalized: [not_cleared, unknown] } ] }
+    priority: critical
+  - id: cooling_or_power_inspection_unknown
+    when: { kind: inspection, any_fact: [ { certainty: [unknown, unverified] } ], asset_category_or_mention: [power, cooling] }
+    priority: critical
+  - id: active_lockout_or_bypass
+    when: { kind: [lockout_tagout, bypass] }
+    priority: critical
+  - id: warning
+    when: { kind: warning }
+    priority: critical
+  - id: decision
+    when: { kind: decision }
+    priority: important
+  - id: unverified_general_claim
+    when: { kind: general_claim }
+    priority: important
+  - id: default
+    when: {}
+    priority: routine
+
+submit_blockers:
+  - "critical facts with review_state ai_extracted"
+  - "clarification questions on safety slots still pending (answering 'I don't know' resolves it)"
+
+verification:
+  select_order:
+    - "critical items with any fact unverified/unknown or work_status not complete"
+    - "decision/bypass items with rationale or restore_condition"
+    - "other critical items"
+  never_select: ["routine items", "items whose facts are all confirmed and complete"]
+  verdict_floor:
+    contradiction_of_critical_fact: inconsistent
+    missing_critical_fact: partially_consistent
+  verified_when: "verdict == consistent, or partially_consistent with only non-critical facts missing"
+
+followups:
+  auto_create_from: "slots.yaml followup_if on critical/important items"
+  owner_sources: ["explicit quote from outgoing operator", "assignment by role lead|supervisor"]
+  default_owner_label: "To be assigned"
+  carry_over: true
+  close_requires: "closure statement naming who verified what"
+  never_auto_close: true
+
+language_rules:
+  # Copy the UI and the LLM must never use for anything but a confirmed fact
+  forbidden_unless_confirmed: ["cleared", "safe", "complete", "done", "finished", "resolved", "okay to proceed"]
+  feedback_must_include_when_clearance_involved: "must be verified through authorized procedures"
+  never_say: ["you may proceed", "safe to operate", "approved to test"]
+
+metrics:
+  shift_a_seconds: "first statement → submitted"
+  shift_b_seconds: "briefing opened → verified"
+  clarification_questions_asked: "count"
+  not_asked: "count, with reasons"
+  answered_unknown: "count"
+  facts_by_certainty: "confirmed/reported/unverified/unknown"
+  ai_facts_edited_or_rejected: "operator corrections of AI-extracted facts (AI error proxy)"
+  verification_first_attempt_rate: "checks verified on attempt 1 / total"
+  misunderstandings_caught: "attempts with verdict inconsistent"
+  open_followups: "open / unassigned / overdue"

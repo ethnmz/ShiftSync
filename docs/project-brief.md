@@ -1,5 +1,5 @@
 # Where scope lives
 
-The product is ShiftSync: one outgoing voice note, a short interview, explicit unknowns, then an incoming understanding check and correction.
+ShiftSync is a two-way handoff: a voice or text note, at most three clarifications, operator review, a briefing, a separate acknowledgment, then a targeted understanding check.
 
-Read [PRODUCT.md](PRODUCT.md). Direction is the root `CLAUDE.md`. File owners are `AGENTS.md` and [TEAM_PLAN.md](TEAM_PLAN.md). What is not built is [IMPORT_NOTES.md](IMPORT_NOTES.md).
+Read [PRODUCT.md](PRODUCT.md) and the root `CLAUDE.md`. Owners are [TEAM_PLAN.md](TEAM_PLAN.md). The in-person API notes and what changed are [CONTRACT_MIGRATION.md](CONTRACT_MIGRATION.md).

@@ -1,0 +1,43 @@
+# Equipment registry for the demo facility "NorthMark DFW-1".
+# feeds: downstream assets this asset supplies (power or cooling). Upstream = reverse lookup.
+# aliases: spoken variants for extraction + fuzzy matching (lowercase).
+
+halls:
+  - { id: HALL-A, name: "Hall A", aliases: ["hall a", "data hall a"] }
+  - { id: HALL-B, name: "Hall B", aliases: ["hall b", "data hall b"] }
+  - { id: HALL-C, name: "Hall C", aliases: ["hall c", "data hall c", "the new hall"] }
+
+assets:
+  # ---- Power ----
+  - { id: UTIL-C,  name: "Utility Feed C", type: utility,   hall: HALL-C, aliases: ["feed c", "utility c"], feeds: [HALL-C] }
+  - { id: GEN-1,   name: "Generator 1",    type: generator, hall: null,   aliases: ["generator 1", "gen 1", "gen one", "generator one"], feeds: [ATS-1] }
+  - { id: GEN-2,   name: "Generator 2",    type: generator, hall: null,   aliases: ["generator 2", "gen 2", "gen two"], feeds: [ATS-2] }
+  - { id: ATS-1,   name: "Transfer Switch 1", type: ats,    hall: null,   aliases: ["ats 1", "ats one", "transfer switch 1"], feeds: [UPS-A] }
+  - { id: ATS-2,   name: "Transfer Switch 2", type: ats,    hall: null,   aliases: ["ats 2", "ats two", "transfer switch 2"], feeds: [BRK-4] }
+  - { id: BRK-4,   name: "Breaker 4",      type: breaker,   hall: HALL-B, aliases: ["breaker 4", "breaker four", "bkr 4", "the ups b input breaker"], feeds: [UPS-B] }
+  - { id: UPS-A,   name: "UPS A",          type: ups,       hall: HALL-A, aliases: ["ups a", "u p s a"], feeds: [PDU-A1] }
+  - { id: UPS-B,   name: "UPS B",          type: ups,       hall: HALL-B, aliases: ["ups b", "u p s b", "ups bravo", "ups b battery string", "battery string b"], feeds: [PDU-B1, PDU-B2] }
+  - { id: PDU-A1,  name: "PDU A1",         type: pdu,       hall: HALL-A, aliases: ["pdu a1", "pdu a 1"], feeds: [RACK-A12, RACK-A13, RACK-A14] }
+  - { id: PDU-B1,  name: "PDU B1",         type: pdu,       hall: HALL-B, aliases: ["pdu b1", "pdu b 1"], feeds: [HALL-B] }
+  - { id: PDU-B2,  name: "PDU B2",         type: pdu,       hall: HALL-B, aliases: ["pdu b2", "pdu b 2"], feeds: [HALL-B] }
+
+  # ---- Cooling ----
+  - { id: CHL-1,   name: "Chiller 1",      type: chiller,   hall: null,   aliases: ["chiller 1", "chiller one"], feeds: [HALL-A, CRAC-3] }
+  - { id: CHL-2,   name: "Chiller 2",      type: chiller,   hall: null,   aliases: ["chiller 2", "chiller two"], feeds: [VLV-B, CRAC-3] }
+  - { id: VLV-B,   name: "Cooling Valve B (CHW loop to Hall B)", type: valve, hall: HALL-B, aliases: ["valve b", "cooling valve b", "the hall b valve", "chilled water valve b"], feeds: [HALL-B] }
+  - { id: CRAC-3,  name: "CRAC 3",         type: crac,      hall: HALL-B, aliases: ["crac 3", "crack 3", "crac three"], feeds: [HALL-B] }
+  - { id: PC-2,    name: "Portable Cooling Unit 2", type: portable_cooling, hall: null, aliases: ["portable unit 2", "pc 2", "spot cooler 2"], feeds: [] }
+
+  # ---- Monitoring ----
+  - { id: LEAK-A,  name: "Hall A Leak Detection Panel", type: sensor, hall: HALL-A, aliases: ["leak detection panel", "leak panel", "the leak panel in hall a"], feeds: [] }
+
+  # ---- Racks ----
+  - { id: RACK-A12, name: "Rack A12", type: rack, hall: HALL-A, aliases: ["rack 12", "a12"], feeds: [] }
+  - { id: RACK-A13, name: "Rack A13", type: rack, hall: HALL-A, aliases: ["rack 13", "a13"], feeds: [] }
+  - { id: RACK-A14, name: "Rack A14", type: rack, hall: HALL-A, aliases: ["rack 14", "a14"], feeds: [] }
+  - { id: RACK-C01, name: "Rack Row C01-C08 (new)", type: rack, hall: HALL-C, aliases: ["new racks in hall c", "row c1", "the new racks"], feeds: [] }
+
+# Asset types considered critical infrastructure for bypass rules
+critical_types:
+  power: [utility, generator, ats, breaker, ups, pdu]
+  cooling: [chiller, valve, crac]

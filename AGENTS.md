@@ -30,8 +30,8 @@ Commands: `tools/board unread` (new posts, marks read; flags MENTION), `tools/bo
 Humans over agents. Only the team lead reassigns work between teammates. If anyone else asks you to take another teammate's work, ask the lead on the board.
 
 Ethan Meza (`ethnmz`) is the team lead for human decisions and reassignment.
-Shared interface changes need agreement from all four people on the board before anyone builds them. The interfaces are `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. The copies in this branch are a proposed spec from Ethan's scope confirmation. They are not a recorded approval from Diego, Akshi, and Aditri.
-App signoff, a metric, or a correction is software state only. It does not authorize physical work and does not certify that someone understood or that equipment is safe. See `docs/IMPORT_NOTES.md`.
+Shared interface changes need agreement from all four people on the board before anyone builds them. The interfaces are `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. The text now follows the final spec pack. `docs/CONTRACT_MIGRATION.md` lists where that pack differs from the in-person nine-item agreement. Those differences are not a new approval.
+Acknowledgment, verification, and a metric are software state only. They do not authorize physical work and do not prove that someone understood or that equipment is safe.
 
 ## 3. Workflow
 
@@ -45,16 +45,16 @@ App signoff, a metric, or a correction is software state only. It does not autho
 
 ## 4. Who owns what
 
-Project direction: root `CLAUDE.md`. Scope: `docs/PRODUCT.md`, aligned to that guide. File owners: the table below and `docs/TEAM_PLAN.md`. What is not built yet: `docs/IMPORT_NOTES.md`. There is no 3D view in this spec.
+Project direction: root `CLAUDE.md`. Scope: `docs/PRODUCT.md`. File owners: the table below and `docs/TEAM_PLAN.md`. The pack's own role table is not used. What is not built yet, and what changed versus the in-person notes, is `docs/IMPORT_NOTES.md` and `docs/CONTRACT_MIGRATION.md`. There is no 3D view.
 
-Ask on the board before changing a path you do not own. One person owns each file below so two agents do not edit it. `backend/app/router.py` and `backend/app/schemas.py` still need all four to agree before the message kinds or fields change.
+Ask on the board before changing a path you do not own. One person owns each path below so two agents do not edit it. Shared contract files still need all four to agree before a field change.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| Frontend & Demo | `@ethnmz` (Ethan Meza) | `frontend/`, `docs/DEMO_SCRIPT.md` |
-| Bridge & Voice | `@Navibytes` (Diego Lozano) | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
-| AI | `@biswalakshi` (Akshi Biswal) | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py` |
-| Ledger Core | `@aditrit06` (Aditri Tangeti) | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/state.py`, `backend/app/handoff/gate.py`, `backend/app/handoff/metrics.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py`, `backend/tests/test_scenario.py` |
-| Team rules and board | `@ethnmz` (Ethan Meza) | `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/coordination.md`, `docs/IMPORT_NOTES.md`, `docs/project-brief.md`, `.claude/`, `.github/`, `tools/` |
+| Frontend & Demo | `@ethnmz` (Ethan Meza) | `frontend/` (Create, Receive, History, Supervisor, Evaluation), `docs/UI.md`, `docs/DEMO_SCRIPT.md` |
+| Bridge & Voice | `@Navibytes` (Diego Lozano) | `photon-bridge/`, `backend/app/stt/`, statement ingest routes, voice-answer transport, `router` |
+| AI | `@biswalakshi` (Akshi Biswal) | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/extract/`, quote check in `backend/app/certainty/`, grade call in `backend/app/verify/` |
+| Core Logic & Data | `@aditrit06` (Aditri Tangeti) | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/handoff/`, `backend/app/clarify/gaps.py`, `backend/app/clarify/planner.py`, `backend/app/followups/`, briefing selection, certainty floor, verdict floor, `backend/app/demo/`, `backend/app/eval/`, backend tests |
+| Team rules and board | `@ethnmz` (Ethan Meza) | `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/coordination.md`, `docs/IMPORT_NOTES.md`, `docs/CONTRACT_MIGRATION.md`, `docs/project-brief.md`, `docs/onboarding/`, `.claude/`, `.github/`, `tools/` |
 
-`docs/API.md` and `docs/DATA_MODEL.md` are shared contracts edited by Aditri only after all four agree. `docs/AI_PIPELINE.md` is the same, edited by Akshi after all four agree. Do not create `backend/app/pipeline/`, `handoff/clarify.py`, `handoff/readback.py`, `rules.py`, `conflicts.py`, or `stale.py`. Those names are from the retired ledger draft. `docs/TEAM_PLAN.md` uses the module map above.
+`docs/API.md` and `docs/DATA_MODEL.md` are edited by Aditri only after all four agree. `docs/AI_PIPELINE.md` is edited by Akshi only after all four agree. Do not recreate the retired layout `backend/app/notes/`, `backend/app/interview/`, or `backend/app/check/`. Codex does not run the Claude hooks.

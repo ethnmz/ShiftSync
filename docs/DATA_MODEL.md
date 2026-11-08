@@ -1,102 +1,96 @@
-# Data model
+# Data Model (SQLModel + SQLite, persistent)
 
-Proposed. Aditri owns the tables. A field change is a shared-interface change and needs all four people. This file does not create a database.
+This is the final spec pack's model. Field-name changes from the in-person agreement are mapped in `docs/CONTRACT_MIGRATION.md`.
 
-Static configuration (`config/slots.yaml`, `config/rules.yaml`, `config/assets.yaml`, `config/roster.yaml`) is an implementation task. Those files are not in the repo. Until they exist, code has nothing to load. Do not invent asset dependencies at runtime.
+Static config in `config/*.yaml` loads at startup (persons and assets are mirrored into tables).
 
-Time is `clock.now()` only. The demo clock may be offset. Identifiers: items `I-0001`, facts `F-0001`, memos `M-0001`, questions `Q-0001`, checks `C-0001`.
+## The four layers (never mix them)
+| Layer | Where | Mutable? |
+|---|---|---|
+| 1. Source statements | `Statement` (verbatim transcript/answer, audio) | **Immutable** |
+| 2. AI-extracted info | `Fact` with `review_state = ai_extracted` | Replaced by re-extraction until reviewed |
+| 3. Operator-confirmed info | `Fact` with `review_state = operator_confirmed / operator_edited` | Only by operators (logged) |
+| 4. Unverified info | `Fact.certainty ∈ {unverified, unknown}` | Visible everywhere, including after review |
+
+`review_state` (who has looked at it) and `certainty` (how sure we are about the world) are **independent**. An operator can confirm that "Chiller 2 status is unknown" is a correct record; the certainty stays `unknown`.
+
+## Certainty levels (Problem 4), code-enforced floors in `app/certainty/`
+| certainty | Meaning | Typical language | Floor rule |
+|---|---|---|---|
+| `confirmed` | Stated as first-hand, verified fact, no hedging | "Load test is not done." "It is in maintenance bypass." | Only if the quote has no hedge/uncertainty/observation term |
+| `reported` | Stated plainly but not as verified: observation or second-hand | "Generator 1 looks good", "vendor says it's done" | Quotes with `observation_terms` or attribution cap here |
+| `unverified` | A specific claim exists, but it's hedged or explicitly not verified | "I think they finished", "mostly finished", "should be done", "haven't received confirmation" | Quotes with `hedges` cap here |
+| `unknown` | The state itself isn't known | "I'm not sure what happened", "no idea", "don't know" | Quotes with `uncertainty_terms` → unknown |
+
+Lexicons live in `config/slots.yaml → language`. The floor can only **lower** certainty. Raising certainty needs a **new statement** from an operator (e.g. a clarification answer), never inference.
 
 ## Enums
-
-```text
-FactStatus     = confirmed | reported | unknown
-GapDisposition = ask | not_asked_low_priority
-Grade          = aligned | misunderstood | not_mentioned
-HandoffStatus  = draft | interviewing | confirmed | checking | correcting | signed
-MemoSource     = imessage_voice | imessage_text | web
-SlotName       = what_is_unfinished | who_verifies | current_state | rationale
-               | restore_condition | contingency | owner | due
-ItemKind       = vendor_return | equipment_condition | restriction
+```python
+Role         = "tech" | "lead" | "supervisor" | "vendor"
+StatementSrc = "voice_web" | "text_web" | "imessage_voice" | "imessage_text" | "seed"
+StatementRole= "handoff" | "clarification_answer" | "review_edit" | "verification_answer" | "followup_update"
+ItemKind     = "maintenance" | "vendor_work" | "testing" | "inspection" | "bypass" | "lockout_tagout"
+             | "decision" | "warning" | "general_claim" | "observation"
+WorkStatus   = "complete" | "incomplete" | "pending" | "not_started" | "unknown"
+Certainty    = "confirmed" | "reported" | "unverified" | "unknown"
+ReviewState  = "ai_extracted" | "operator_confirmed" | "operator_edited" | "operator_rejected"
+Priority     = "critical" | "important" | "routine"          # rules.yaml only
+HandoffState = "draft" | "analyzing" | "clarifying" | "in_review" | "submitted"
+             | "acknowledged" | "verifying" | "verified" | "verified_with_assistance"
+GapType      = "vague_statement" | "missing_required" | "uncertain_claim" | "missing_rationale"
+             | "missing_condition" | "unscoped_claim" | "missing_owner_or_deadline"
+Verdict      = "consistent" | "partially_consistent" | "inconsistent"
+Misconception= "treated_incomplete_as_complete" | "treated_unverified_as_confirmed" | "assumed_clearance"
+             | "missed_required_verification" | "missed_rationale" | "missed_condition" | "wrong_owner"
+             | "wrong_equipment" | "other"
 ```
 
-`confirmed` is only stored after `facts/status.py` and `facts/verify.py` both pass. A hedge match forces `reported`.
+## Tables
 
-## Memo
+**Person** `id, name, role, team, phone?` · **Asset** `id, name, type, location, aliases[]` · **Shift** `id, team, lead_id, starts_at, ends_at`
 
-`id`, `author_id`, `source`, `text`, `audio_path?`, `received_at`, `status` (`processed` | `needs_review` | `rejected`).
+**Handoff**
+`id, from_shift_id, to_shift_id, outgoing_id, incoming_id, state (HandoffState), created_at, submitted_at?, acknowledged_at?, acknowledged_by?, verification_started_at?, verified_at?, question_budget_used, metrics (JSON), carried_over_item_ids (JSON)`
 
-`needs_review` means extraction failed twice or the quote check dropped every observation. No guessed facts are written.
+**Statement** (layer 1, immutable)
+`id, handoff_id, speaker_id, source, role (StatementRole), text, audio_path?, at, question_id?` (if it answers a clarification)
 
-## Item
+**Item** (an equipment- or topic-level card)
+`id, handoff_id, origin_item_id?` (carried over from an earlier handoff) `, kind, title, asset_ids[], location?, priority (rules), is_decision (bool), open (bool), created_from_statement_id`
 
-`id`, `kind`, `asset_id?` (null when the registry does not resolve it), `summary` (words from the note, not a new fact).
+**Fact**
+| field | notes |
+|---|---|
+| id, item_id | |
+| slot | from `slots.yaml` (e.g. `work_status`, `operational_clearance`, `rationale`, `restore_condition`, `remaining_work`, `next_action`, `owner`, `deadline`) |
+| value | short plain text |
+| normalized | enum value if the slot defines `values` |
+| certainty | Certainty (after floor) |
+| certainty_reason | e.g. `hedge:"mostly"`, `uncertainty:"not sure"`, `operator stated` |
+| review_state | ReviewState |
+| source_statement_id, quote | verbatim span, verified (fuzzy ≥ 85) |
+| superseded_by? | history kept |
+| ai_proposed_value? | if the operator edited, keep what AI proposed (for the "incorrect facts introduced by AI" metric) |
 
-## Fact
+**FollowUp** (Problem 4)
+`id, item_id, handoff_id, description` (e.g. "Obtain vendor completion confirmation for Chiller 2 inspection") `, missing_information, owner_id? (null → "To be assigned"), deadline?, assigned_by?, assigned_at?, status ("open"|"in_progress"|"closed"), closed_by?, closed_at?, closure_statement_id?`
+- Created automatically (deterministic) for every critical/important fact with certainty `unverified`/`unknown` or work_status `incomplete/pending/unknown`.
+- `owner_id`/`deadline` set only when: (a) Shift A's statement explicitly names them (quote-verified), or (b) a user with role `lead`/`supervisor` assigns them in the UI (`assigned_by` logged).
+- Closing requires a closure statement (who verified what). Open follow-ups carry over to the next handoff.
 
-`id`, `item_id`, `slot`, `status`, `text`, `quote`, `speaker_id`, `memo_id`, `quote_verified` (bool, set by code), `hedge_downgraded` (bool, set by code).
+**ClarificationQuestion** (Problem 1, 3, 4, 5)
+`id, handoff_id, item_id, gap_type, slots[], priority_score, text, status ("pending"|"answered"|"answered_unknown"|"not_asked"), reason_not_asked?, answer_statement_id?, asked_at?, answered_at?`
 
-Unknown follow-up, stored on the fact:
+**Acknowledgment** (separate from verification!)
+`id, handoff_id, person_id, at, scope ("handoff"|"item"), item_id?`
 
-```json
-{ "owner_id": null, "due": null, "state": "UNASSIGNED" }
-```
+**VerificationCheck** (Problem 2)
+`id, handoff_id, item_id, question, answer_key (JSON: must_convey[{fact_id, statement}], must_not_claim[]), status ("pending"|"verified"|"needs_clarification"|"clarified_in_person"), attempts (JSON)`
+Attempt: `{statement_id, answer_text, verdict, conveyed_fact_ids, missing_fact_ids, contradictions[{fact_id, claimed}], misconception, feedback, evidence[{statement_id, quote}], at}`
 
-or, after a human answer:
+**AuditEvent**
+`id, handoff_id?, item_id?, actor_id?, type, at, detail (JSON)`. Types include `fact_extracted, certainty_floored, question_asked, answered_unknown, fact_edited, submitted, acknowledged, verification_attempt, clarified_in_person, followup_assigned, followup_closed, carried_over`.
 
-```json
-{ "owner_id": "maya", "due": "2026-11-08T15:00:00Z", "state": "assigned", "assigned_by": "maya" }
-```
-
-`owner_id` and `due` are copied from a human answer only.
-
-## Question
-
-`id`, `handoff_id`, `phase` (`interview` | `check`), `about_fact_id?`, `about_slot`, `text`, `asked_at`, `answer_text?`, `answer_memo_id?`.
-
-Interview questions count toward the budget of 3. Check questions do not.
-
-## Check grade
-
-`id`, `question_id`, `fact_id`, `grade`, `evidence_quote?`, `correction?`.
-
-`evidence_quote` must verify against the answer text before code stores `aligned`.
-
-## Handoff
-
-`id`, `from_lead_id`, `to_lead_id?`, `status`, `questions_asked`, `budget` (default 3), `started_at`, `signed_at?`.
-
-## State transitions
-
-```text
-draft
-  -- note stored, extract finished --> interviewing
-interviewing
-  -- next critical gap, under budget --> interviewing
-  -- budget used or no critical gap left --> confirmed
-confirmed
-  -- incoming check starts --> checking
-checking
-  -- grade aligned, more safety facts --> checking
-  -- grade not aligned --> correcting
-correcting
-  -- answer still not aligned --> correcting
-  -- answer aligned, more safety facts --> checking
-sign from checking or correcting
-  -- gate fails --> status unchanged, blockers returned
-  -- gate passes --> signed
-```
-
-Signoff blockers are only:
-
-- a fact with `state: UNASSIGNED`
-- a confirmed safety fact whose latest grade is `misunderstood` or `not_mentioned`
-
-## Metrics snapshot
-
-Written by `handoff/metrics.py` for evaluation. Not a safety certificate.
-
-`completeness`, `interpretation`, `action_clarity`, `efficiency`. Each is a number from 0 to 1 computed from a scenario's ground truth. Definitions are in `docs/EVALUATION.md`. No snapshot exists until a scenario is run.
-
-## Not in this model
-
-There is no conflict table, no per-item tap acknowledgment, and no stale-item counter in the P0 schema. Those belonged to an earlier ledger draft. A later P2 may add them only after a team agreement, and only using dependencies that are already in configuration.
+## Derived views
+- **Briefing**: open items sorted by priority; per item: what/why/certainty/next action/owner/source quotes.
+- **Handoff status line**: `Submitted 06:45 · Acknowledged 07:01 · Understanding verified 07:06 (1 corrected) · 2 open follow-ups (1 to be assigned)`.

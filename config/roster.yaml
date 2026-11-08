@@ -1,0 +1,22 @@
+# Fictional E.164 numbers for the demo roster. Do not commit real phone numbers.
+# Only these numbers are accepted by the bridge/backend.
+site: "NorthMark DFW-1"
+timezone: "America/Chicago"
+
+shifts:
+  # Local times. Three 8-hour shifts per day.
+  - { team: day,   start: "07:00", end: "15:00" }
+  - { team: swing, start: "15:00", end: "23:00" }
+  - { team: night, start: "23:00", end: "07:00" }
+
+people:
+  - { id: maya,   name: "Maya Chen",     role: lead, team: night, phone: "+15550100001" }
+  - { id: priya,  name: "Priya Nair",    role: tech, team: night, phone: "+15550100002" }
+  - { id: luis,   name: "Luis Ortega",   role: tech, team: night, phone: "+15550100003" }
+  - { id: jordan, name: "Jordan Blake",  role: lead, team: day,   phone: "+15550100004" }
+  - { id: sam,    name: "Sam Okafor",    role: tech, team: day,   phone: "+15550100005" }
+  - { id: ana,    name: "Ana Reyes",     role: tech, team: day,   phone: "+15550100006" }
+  - { id: rob,    name: "Rob Kim",       role: lead, team: swing, phone: "+15550100007" }
+  - { id: dana,   name: "Dana Ellis",    role: supervisor, team: null, phone: "+15550100008" }
+  # External (not allowed to message the line; referenced in memos)
+  - { id: dave_smith, name: "Dave Smith", role: vendor, team: null, phone: null, vendor_company: "Siemens" }

@@ -1,116 +1,123 @@
 @AGENTS.md
 
-This guide is the product direction. `docs/PRODUCT.md` restates it for scope. If a feature list drifts from the five failure modes below, this guide wins until the team agrees on a change. `AGENTS.md` wins on the board, branches, and file owners. `docs/IMPORT_NOTES.md` says what is not built yet.
-
 # CLAUDE.md — ShiftSync
 
-HackUTD 2026 · **NorthMark Compute & Cloud (NMC²)** track ("Keep the World Running"). Photon and Nvidia are optional submission choices. This repository does not confirm sponsor eligibility.
+> **Less chaos. Clearer communication. Faster handoffs.**
 
-## The problem we own
+HackUTD 2026 · NorthMark Compute & Cloud (NMC²) track. 24-hour hackathon. The pack also names Nvidia (Nemotron) and, if the optional iMessage channel is built, Photon. This repository does not confirm sponsor eligibility.
 
-> **Information is communicated, but the meaning doesn't always transfer.**
+You are the team's senior full-stack engineer, AI architect and product design partner. This file is the permanent project context. **Read it at the start of every session.** Detailed specs live in `docs/`. This file wins on product behavior if a doc conflicts. `AGENTS.md` wins on who owns a file, branches, and the board. The role table in the original pack's team plan is not the team's split.
 
-Shift A believes they explained the situation. Shift B believes they understood it. They leave with different interpretations. Example: Shift A says *"The UPS vendor is coming back tomorrow. Everything should be fine."* Shift A means *"work is unfinished; the vendor still has to verify."* Shift B hears *"maintenance is done."*
+---
 
-Basic handoff software (note organization, carrying tasks forward, acknowledgment buttons, audit logs) **already exists** (e.g. TeamAssurance, Shift Handover Log). We build those only as plumbing and **never pitch them as the innovation**.
+## 1. Product vision
 
-## The product in one paragraph
+**Core problem:** critical operational information is lost, misunderstood, left unresolved or communicated ambiguously during shift-to-shift handoffs.
 
-**ShiftSync turns a rushed, messy handoff into a short, two-way conversation** over iMessage (via Photon). The outgoing lead sends one end-of-shift voice note. The **Handoff Interviewer** asks only the few questions needed to pin down vague statements, missing safety details, the *reasons* behind decisions and *who owns each unknown*. Then the **Understanding Check** asks the incoming lead open-ended questions, grades their answers against Shift A's confirmed handoff, catches misunderstandings and corrects them until the meaning has transferred. Unknowns stay explicitly unknown, never quietly upgraded to "done".
+ShiftSync helps **outgoing operators communicate the right information** and **incoming operators understand what they are taking responsibility for**.
 
-**Product principle: Maximum understanding. Minimum effort.**
+- We are **not** building an AI note-taker or a summarization dashboard.
+- We **are** building a **two-way, AI-assisted handoff process** that improves completeness, clarity, understanding and accountability **while minimizing operator effort**.
+- **Scope: shift handoffs only.** No predictive maintenance, equipment control, facility-wide monitoring or unrelated data center operations.
 
-## The five failure modes (every feature must map to one)
+**Ultimate goal:** outgoing operators communicate naturally, AI catches important gaps, uncertainty stays visible, and incoming operators demonstrate understanding before the handoff is considered verified.
 
-| # | Failure mode | ShiftSync's response | Where in code |
+## 2. The five problems (every feature must serve at least one)
+
+| # | Problem | Solution | Key rule |
 |---|---|---|---|
-| 1 | Hidden assumptions ("it's handled") | Detect vague language; ask for the missing operational detail | `interview/gaps.py` (vague, hedge), `prompts/interview.md` |
-| 2 | False understanding (clicks "acknowledge" without understanding) | Open-ended understanding check graded against the confirmed record, plus a correction loop | `check/` |
-| 3 | Lost reasoning (knows *what*, not *why*) | Capture rationale, conditions and exceptions as required facts | slots `rationale`, `restore_condition`, `contingency` |
-| 4 | Unresolved uncertainty (nobody knows, looks complete) | Every fact is `confirmed` / `reported` / `unknown`; unknowns need a human-assigned owner and due time | `Fact.status`, `follow_up` |
-| 5 | Handoff fatigue (long forms get rushed) | Adaptive: ask only for missing *critical* slots, strict question budget, one question at a time | `interview/planner.py`, `config/slots.yaml` |
+| 1 | **Hidden assumptions**: "everything is fine", "it's handled", "the vendor should be done" | **Clarification Engine**: detect vague/incomplete language, identify what's missing, ask specific questions *before Shift A submits* | Never assume a task is complete without explicit confirmation |
+| 2 | **False understanding**: Shift B acknowledges without understanding | **Two-Way Understanding Verification**: concise briefing, targeted questions, natural-language answers compared with verified handoff info, misunderstandings shown **with original evidence**, another attempt allowed | **Acknowledgment ≠ verified understanding**: record them separately |
+| 3 | **Lost reasoning**: what happened, but not why | **Decision Context Preservation**: identify decisions, extract rationale, ask when an important rationale is missing, keep restrictions/conditions/exceptions, link to source | Shift B sees both *what* and *why* |
+| 4 | **Unresolved uncertainty**: unknowns look complete | **Uncertainty & Follow-Up Tracking**: classify every fact `confirmed / reported / unverified / unknown`; ask whether key claims are verified; follow-ups with owner + deadline assigned by authorized users; unresolved items stay visible across handoffs | **Never** convert uncertain statements into confirmed facts |
+| 5 | **Handoff fatigue** | **Adaptive, low-friction**: voice-first (text alternative), auto-extraction, never re-ask what's answered, ask only the most important missing questions, one-tap "Unknown", quick corrections, easy review | Mandatory safety checks are never skipped for convenience |
 
-Read `docs/PRODUCT.md` for the feature list. It matches this guide. Scope changes still need the team agreement in `AGENTS.md`.
+## 3. Core user journey (one seamless experience)
 
-## Non-negotiable design principles
+1. **Outgoing handoff**: Shift A records (or types) a natural-language handoff.
+2. **AI analysis**: extract equipment/locations, completed work, unfinished work, critical warnings, decisions + rationale, uncertainties, follow-up actions, owners and deadlines.
+3. **Adaptive clarification**: targeted questions about important omissions, ambiguity and uncertainty (prioritized, budgeted, one at a time).
+4. **Handoff review**: Shift A reviews/edits the structured handoff and submits.
+5. **Incoming briefing**: Shift B gets a concise, prioritized handoff distinguishing confirmed facts, reported claims, unverified claims, unknowns and outstanding responsibilities.
+6. **Understanding verification**: Shift B answers targeted questions; ShiftSync detects misunderstandings, shows evidence, allows another attempt.
+7. **Completion**: track submitted, acknowledged, verification results, unresolved questions, assigned follow-ups, completion status.
 
-1. **Never make something look more certain than it is.** Hedged statements ("I think", "should be fine", "probably") can only produce `reported` facts, never `confirmed`. Code enforces this with the hedge lexicon in `config/slots.yaml`, whatever the LLM says.
-2. **Never invent owners, times or facts.** Follow-up owners and due times come from a human answer. If nobody gives one, the unknown is shown as **UNASSIGNED** and blocks completion.
-3. **Ask less, ask better.** The interviewer has a question budget (default 3 per outgoing lead). Gaps on non-safety slots are recorded as "not asked (low priority)" rather than asked.
-4. **The LLM interprets; code decides.** LLMs extract facts, phrase questions and grade answers. Which gaps exist, which question comes next, severity, gating and scoring are deterministic code driven by `config/slots.yaml` and `config/rules.yaml`.
-5. **Every fact cites its source.** Each fact carries a verbatim quote verified against the transcript (fuzzy ≥ 0.85) and who said it.
-6. **Prove it.** `eval/` compares ShiftSync against (a) raw notes and (b) a plain AI summary on the same scenarios, using four metrics: completeness, interpretation, action clarity and efficiency.
-7. **Demo reliability beats features.** Everything replays offline from `demo/scenario.json`.
+> A handoff can be received while operational issues remain unresolved. **Never imply that acknowledgment, verification or completion proves safety or closes those issues.**
 
-## Repo layout
+## 4. Screens (see `docs/UI.md`)
+1. **Shift A: Create Handoff**: big record button, text alternative, transcript, extracted items, clarification questions, editable structured summary, review and submit.
+2. **Shift B: Receive Handoff**: prioritized briefing (critical/unresolved first), equipment cards, source statements, next actions and owners, verification interaction, acknowledgment controls.
+3. **Handoff History** (P1): past handoffs, status, timestamps, outstanding questions, pending acknowledgments, evidence and clarification history.
+4. **Supervisor View** (P1, minimal): pending/completed handoffs, unresolved questions, outstanding acknowledgments, verification status. **Handoff quality only, no facility monitoring.**
+5. **Evaluation** (P1): benchmark results (see `docs/EVALUATION.md`).
 
+## 5. AI architecture and hard rules
+
+AI is used for: speech transcription, structured extraction, ambiguity detection, clarification questions, decision-rationale extraction, uncertainty classification, briefing generation and understanding verification. **Structured outputs validated by Pydantic schemas, always.**
+
+Keep **four layers** separate in data and UI:
+1. **Source statements**: verbatim transcripts and answers (immutable).
+2. **AI-extracted information**: `review_state = ai_extracted` (shown with an "AI" tag until reviewed).
+3. **Operator-confirmed information**: `review_state = operator_confirmed | operator_edited` (after Shift A's review).
+4. **Unverified information**: certainty `unverified` / `unknown`, which is visible everywhere and never hidden by review.
+
+**Never hallucinate** equipment status, owners, deadlines, safety clearance or maintenance completion. Every important fact links to a verbatim source quote (code-verified). **Deterministic code** owns handoff states, required fields, priority, question budget, certainty floors, verdict floors and acknowledgment tracking; LLMs never decide these alone. **AI must not authorize equipment operations or replace facility safety procedures.** Corrections say things like "must be verified through authorized procedures", never "you may proceed".
+
+## 6. Tech stack
+- **frontend/**: React 18 + TypeScript + Vite + Tailwind CSS, TanStack Query, React Router. Voice via browser `MediaRecorder`.
+- **backend/**: Python 3.11 FastAPI, SQLModel + **SQLite** (persistent: `backend/data/shiftsync.db`), Pydantic v2, `rapidfuzz`, `openai` SDK (NVIDIA's OpenAI-compatible endpoint and OpenAI Whisper), `anthropic` (fallback provider), optional `faster-whisper`, `ffmpeg`.
+- **LLM**: `LLM_PROVIDER=nemotron` or `claude`. The pack prefers Nemotron with Claude as a fallback. Model ids in `.env.example` are blank until someone confirms a current model card. Do not treat an unverified slug as valid.
+- **STT**: `STT_PROVIDER=openai|local`.
+- **Optional channel (P1)**: Photon iMessage bridge (`photon-bridge/`, TypeScript) so operators can send voice notes from their phone into the same pipeline. See `docs/PHOTON_BRIDGE.md`.
+- **P2**: Outlook integration only if it directly feeds handoff information (e.g. vendor visit times).
+
+## 7. Repo layout
 ```
 shiftsync/
 ├── CLAUDE.md
 ├── .env.example
-├── docs/
-│   ├── PRODUCT.md        ← problem, 5 failure modes, P0/P1/P2
-│   ├── ARCHITECTURE.md   ← components, conversation routing, interview + check loops
-│   ├── DATA_MODEL.md     ← Item, Fact (confirmed/reported/unknown), Interview, Check, metrics
-│   ├── API.md            ← REST contract
-│   ├── AI_PIPELINE.md    ← providers, prompts, schemas, guardrails
-│   ├── EVALUATION.md     ← how we prove we're better (4 metrics × 3 conditions)
-│   ├── PHOTON_BRIDGE.md  ← iMessage bridge (spectrum-ts, TypeScript)
-│   ├── UI.md             ← screens
-│   ├── DEMO_SCRIPT.md    ← submitted cut ≤2 min; longer rehearsal kept separate
-│   └── TEAM_PLAN.md      ← 4 people, overnight milestones
-├── config/
-│   ├── slots.yaml        ← required facts per item kind, safety flags, hedge lexicon, budget
-│   ├── rules.yaml        ← gating; dependency warnings are P2 only, not the core path
-│   ├── assets.yaml       ← equipment registry + dependencies + aliases
-│   ├── runbooks.yaml     ← suggested contingencies
-│   └── roster.yaml       ← people, roles, phones
-├── demo/scenario.json    ← the demo handoff, scripted, with expected outcomes (also a test)
-├── eval/scenarios/*.json ← 3 failure scenarios with ground truth for the benchmark
-├── backend/              ← FastAPI (Python 3.11+)    [to build]
-├── frontend/             ← React + Vite + TS         [to build]
-└── photon-bridge/        ← Bun/Node + spectrum-ts    [to build]
+├── docs/      PRODUCT · ARCHITECTURE · DATA_MODEL · API · AI_PIPELINE · UI · EVALUATION · DEMO_SCRIPT · TEAM_PLAN · PHOTON_BRIDGE
+├── config/    slots.yaml (required facts, language lexicons, budgets) · rules.yaml (severity, states) · assets.yaml · roster.yaml · runbooks.yaml
+├── demo/      scenario.json  (the demo, scripted + expected outcomes = regression test)
+├── eval/      scenarios/*.json (benchmark scenarios with ground truth)
+├── backend/   [to build]  app/{main,db,models,schemas,clock,config}.py, llm/, stt/, extract/, certainty/, clarify/, review/, briefing/, verify/, followups/, handoff/, eval/, demo/, routes/, prompts/
+├── frontend/  [to build]  src/{screens,components,api}/
+└── photon-bridge/ [optional]
 ```
 
-## Stack
-
-- **backend/**: Python 3.11, FastAPI, SQLModel + SQLite, Pydantic v2, `pyyaml`, `rapidfuzz`, `httpx`, `anthropic`, `openai` (NVIDIA's OpenAI-compatible endpoint + OpenAI Whisper), optional `faster-whisper`. `ffmpeg` converts iMessage audio (often `.caf`) to 16 kHz mono WAV.
-- **frontend/**: React 18, Vite, TypeScript, Tailwind, TanStack Query (poll every 1.5 s), React Router.
-- **photon-bridge/**: Bun (or Node ≥ 18.17) + `spectrum-ts`. Spectrum is **TypeScript-only**, hence a separate process.
-- **LLM**: `LLM_PROVIDER=claude|nemotron` with per-task overrides. **STT**: `STT_PROVIDER=openai|local`. Photon delivers voice-note audio but **no transcript**.
-
-## Commands (create as you scaffold)
-
+## 8. Commands (create as you scaffold)
 ```bash
 cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
-pytest -q                                  # unit + scenario test
-python -m app.demo.seed --reset            # load config + history
-python -m app.demo.seed --step 3           # replay demo step 3 through the real pipeline
-python -m app.eval.run                     # benchmark → backend/data/eval_results.json
-
-cd frontend && npm install && npm run dev  # :5173, proxies /api → :8000
-cd photon-bridge && bun install && bun run dev
+pytest -q                             # unit tests + demo scenario test
+python -m app.demo.seed --reset       # load roster/assets + carry-over history
+python -m app.eval.run                # benchmark → data/eval_results.json
+cd frontend && npm install && npm run dev   # :5173, proxies /api → :8000
 ```
 
-## Backend module map
+## 9. Development priorities
+- **P0 (must work):** voice/text handoff creation · structured extraction · adaptive clarification · uncertainty tracking · incoming briefing · understanding verification · persistent handoff state.
+- **P1:** handoff history · supervisor overview · source highlighting · additional ingestion (Photon iMessage) · evaluation dashboard.
+- **P2:** Outlook integration · additional notification channels · advanced analytics.
 
-`app/main.py`, `db.py`, `models.py`, `schemas.py`, `clock.py`, `config.py`, `llm/` (providers + `complete_json`), `stt/`, `notify.py` (→ bridge), `router.py` (decides whether an inbound message is a shift note, an interview answer or a check answer), `notes/` (`ingest.py`, `extract.py`, `reconcile.py`), `facts/` (`status.py`: hedge enforcement, `verify.py`: quote check), `interview/` (`gaps.py`, `planner.py`, `session.py`), `check/` (`questions.py`, `grade.py`, `session.py`), `handoff/` (`state.py`, `gate.py`, `metrics.py`, `briefing.py`), `eval/`, `demo/`, `routes/`. `ask.py` is not on the P0 path.
+## 10. Evaluation (see `docs/EVALUATION.md`)
+Measured on predetermined fictional scenarios against **a normal handoff** and **a basic AI summary**: critical facts transferred, missing details detected, ambiguous statements clarified, misunderstandings caught, unknowns preserved, time to complete, clarification questions asked, **incorrect facts introduced by AI**. **Never claim results we haven't measured.**
 
-## Conventions
+## 11. Rules for Claude Code
+- Always prioritize the five handoff problems; never add features without a clear link to handoff reliability.
+- Keep the experience intuitive for exhausted, busy operators: big targets, short text, voice first.
+- Avoid unnecessary architecture and overengineering; prefer simple, maintainable, demo-ready code.
+- Keep AI suggestions visibly separate from verified information.
+- Write modular, readable, typed code. **Add tests for critical handoff logic** (certainty floors, gap detection, question planning, verdict floors, state transitions, follow-up rules).
+- Make the UI visually polished and responsive.
+- **Never silently invent missing facts.** Make assumptions explicit (code comments + PR/commit notes) when implementing unspecified details.
+- **Before large implementation changes, explain what will be built and why**, then build.
+- Finish one excellent end-to-end workflow (the demo in `docs/DEMO_SCRIPT.md`) before anything else.
 
-- Time: `clock.now()` only (simulated clock for the demo).
-- IDs: assets from `assets.yaml` (`UPS-B`, `BRK-4`, `CHL-2`); items `I-0001`, facts `F-0001`, memos `M-0001`, questions `Q-0001`, checks `C-0001`.
-- All LLM calls go through `app/llm/client.py::complete_json(task, system, user, schema)` with Pydantic validation, one retry, then a safe fallback (never guess).
-- Prompts live in `backend/app/prompts/*.md` (copied from `docs/AI_PIPELINE.md`). Log every LLM call to `data/llm_log.jsonl`.
-- Frontend: `src/screens/<Screen>/`, `src/components/`, `src/api/` (types mirror `docs/API.md`, fixtures in `src/api/fixtures/`).
-- Keep it small. This is a hackathon. If a feature doesn't map to one of the 5 failure modes, don't build it.
-
-## Testing
-
-- `tests/test_scenario.py` replays `demo/scenario.json` and asserts each step's `expect` block. Run it after every prompt edit.
-- Unit-test the deterministic parts: `gaps.py`, `planner.py` (budget + priority), `status.py` (hedge downgrade), `gate.py`, `metrics.py`, `verify.py`.
-
-## Security and privacy
-
-Only roster numbers are accepted; unknown senders are rejected and not stored. Keys only in `.env`. Audio stays local in `backend/data/audio/`. Only the configured STT/LLM providers see content. Every confirmation, correction and sign-off is recorded with person, time and quote.
+## 12. Conventions
+- Time: `clock.now()` only (simulated clock for demos).
+- IDs: assets from `config/assets.yaml` (`UPS-B`, `GEN-1`, `CHL-2`); handoffs `H-0001`, items `I-…`, facts `F-…`, statements `S-…`, questions `Q-…`, checks `V-…`, follow-ups `FU-…`.
+- All LLM calls go through `app/llm/client.py::complete_json(task, system, user, schema)` (validate → 1 retry → safe fallback that changes nothing).
+- Prompts live in `backend/app/prompts/*.md`; log every call to `data/llm_log.jsonl`.
+- Frontend types mirror `docs/API.md`; build screens against `src/api/fixtures/` first.
+- Privacy: roster-only users, keys only in `.env`, audio stored locally, only the configured STT/LLM providers see content; every acknowledgment, verification and follow-up assignment is audit-logged.

@@ -1,0 +1,87 @@
+{
+  "id": "vague_ups",
+  "notes": "Quick handoff: UPS-A vendor said they'll be back tomorrow morning, everything should be fine. Rack A13 had a fan alarm earlier, it's handled. Otherwise quiet.",
+  "ground_truth_facts": [
+    {
+      "item": "UPS-A vendor_work",
+      "slot": "work_status",
+      "value": "incomplete: discharge test not done",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "UPS-A vendor_work",
+      "slot": "operational_clearance",
+      "value": "not cleared for full load; on maintenance bypass",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "UPS-A vendor_work",
+      "slot": "next_action",
+      "value": "keep on maintenance bypass; no load transfer until vendor signs off",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "UPS-A vendor_work",
+      "slot": "action_owner",
+      "value": "incoming lead",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "UPS-A vendor_work",
+      "slot": "next_visit",
+      "value": "tomorrow 9 AM",
+      "critical": false,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "PDU-A1 maintenance",
+      "slot": "work_status",
+      "value": "complete: monitoring fan replaced, alarm cleared",
+      "critical": false,
+      "certainty": "confirmed"
+    }
+  ],
+  "comprehension_questions": [
+    {
+      "q": "What is the current state of UPS-A and what can't be done yet?",
+      "must_not_claim": [
+        "UPS-A work complete",
+        "UPS-A cleared"
+      ],
+      "must_convey": [
+        "discharge test incomplete / not cleared",
+        "stay on maintenance bypass, no load transfer until vendor sign-off"
+      ]
+    },
+    {
+      "q": "Who owns the next action on UPS-A?",
+      "must_not_claim": [],
+      "must_convey": [
+        "incoming lead keeps it on bypass until vendor signs off"
+      ]
+    }
+  ],
+  "likely_misreadings": [
+    "vendor coming back = routine follow-up, work done",
+    "'everything should be fine' = UPS-A back in normal service"
+  ],
+  "outgoing_operator_knowledge": {
+    "UPS-A": "Eaton technician replaced two battery modules but did not finish the post-replacement discharge test. UPS-A is NOT cleared to carry full load; it's on maintenance bypass. The tech returns tomorrow 9 AM to finish the test. The incoming lead must keep UPS-A on maintenance bypass and must not transfer load back until the vendor signs off.",
+    "RACK-A13": "Fan alarm was a failed fan in PDU A1's monitoring module, not the rack. Replaced it at 02:00 and the alarm cleared. Nothing pending."
+  },
+  "problem": "1 Hidden assumptions: vague handoff, ambiguous meaning",
+  "missing_in_notes": [
+    "UPS-A remaining work (discharge test)",
+    "UPS-A operational clearance",
+    "next action + owner"
+  ],
+  "ambiguous_phrases": [
+    "everything should be fine",
+    "it's handled",
+    "they'll be back tomorrow morning"
+  ]
+}
