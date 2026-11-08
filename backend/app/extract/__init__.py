@@ -49,6 +49,20 @@ class ExtractionResult(Candidate):
     unscoped_claims: list[str] = Field(default_factory=list)
 
 
+async def extract_statement(*, text, speaker, existing_items, scope) -> ExtractionResult:
+    """Entry point used by the handoff service for statements and clarification answers."""
+    from .. import config
+
+    def operator_context(person):
+        return {key: person[key] for key in ("id", "name", "role", "team") if key in person}
+
+    return await extract(
+        text, assets=list(config.assets().values()), kinds=config.slots()["kinds"],
+        roster=[operator_context(person) for person in config.people().values()],
+        speaker=operator_context(speaker), existing_items=existing_items, scope=scope,
+    )
+
+
 async def extract(statement: str, *, assets, kinds, roster, speaker, existing_items=(), scope=None):
     """Pass assets.yaml's assets list and slots.yaml's kinds mapping as context."""
     if not statement.strip():
