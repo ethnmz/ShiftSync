@@ -16,6 +16,10 @@ Rules, per open item from this handoff:
 
 A slot is never asked again once a question about it is pending or answered,
 including "I don't know" (Problem 5).
+
+A non-safety gap on an item that was stated clearly is flagged `statement_clear`,
+and the planner records it as not asked (Problem 5). A decision's missing rationale
+or restore condition is exempt, because those are worth a question (Problem 3).
 """
 from __future__ import annotations
 
@@ -41,6 +45,19 @@ class Gap:
     item_priority: str
     reason: str
     order: int = 0  # item position, for stable tie-breaks
+    statement_clear: bool = False  # non-safety gap on an item stated plainly: not worth a question
+
+
+def _stated_clearly(view: ItemView, vague_terms: list[str]) -> bool:
+    """True when the item has facts and every one is confirmed and free of vague wording.
+
+    The certainty floor has already capped hedges, uncertainty and second-hand claims
+    ("vendor said"), so certainty covers those. No facts at all is not clear: nothing
+    usable was said.
+    """
+    return bool(view.facts) and all(
+        f.certainty == "confirmed" and not find_term(f.quote or f.value, vague_terms)
+        for f in view.facts)
 
 
 def covered_slots(questions: Iterable[ClarificationQuestion], item_id: str) -> set[str]:
@@ -65,10 +82,14 @@ def item_gaps(view: ItemView, questions: Iterable[ClarificationQuestion] = (),
     catalog = config.kind_slots(view.kind)
     vague_terms = config.language()["vague_terms"]
     covered = covered_slots(questions, view.id)
+    clear = _stated_clearly(view, vague_terms)
+    is_decision = view.item.is_decision or view.kind == "decision"
     gaps: list[Gap] = []
 
     def add(gap_type: str, slots: list[str], target: str | None, safety: bool, reason: str) -> None:
-        gaps.append(Gap(view.id, gap_type, tuple(slots), target, safety, view.priority, reason, order))
+        decision_detail = is_decision and gap_type in ("missing_rationale", "missing_condition")
+        gaps.append(Gap(view.id, gap_type, tuple(slots), target, safety, view.priority, reason, order,
+                        statement_clear=clear and not safety and not decision_detail))
 
     missing = [s for s, spec in catalog.items()
                if spec.get("required") and s not in covered
