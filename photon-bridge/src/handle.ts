@@ -50,6 +50,7 @@ export function senderPhone(message: Message, cfg: BridgeConfig): string {
 export async function handle(space: Space, message: Message, cfg: BridgeConfig): Promise<void> {
   if (message.direction === "outbound") return;
   const c = message.content;
+  console.log(`[bridge] received ${c.type}`); // type only: no message content or sender in the log
   const isAudio = c.type === "voice" || (c.type === "attachment" && c.mimeType.startsWith("audio/"));
   if (c.type !== "text" && !isAudio) {
     await message.reply(UNSUPPORTED);
@@ -68,7 +69,9 @@ export async function handle(space: Space, message: Message, cfg: BridgeConfig):
       const form = new FormData();
       form.append("sender_phone", phone);
       const name = c.name ?? `voice-note${EXTENSIONS[c.mimeType] ?? ".caf"}`;
-      form.append("file", new Blob([new Uint8Array(await c.read())], { type: c.mimeType }), name);
+      const bytes = new Uint8Array(await c.read());
+      console.log(`[bridge] downloaded ${c.mimeType}, ${bytes.length} bytes`);
+      form.append("file", new Blob([bytes], { type: c.mimeType }), name);
       init = { method: "POST", body: form };
     } else {
       return;
