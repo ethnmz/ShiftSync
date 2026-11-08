@@ -1,6 +1,6 @@
 # UI Spec
 
-**Design goals:** visually polished, modern, responsive (laptop, tablet, wall screen). Built for exhausted operators: large touch targets (≥ 44 px), short text, one primary action per view, voice first. Light and dark themes; default dark for night shift.
+**Design goals:** visually polished, modern, responsive (laptop, tablet, wall screen). Built for exhausted operators: large touch targets (≥ 44 px), short text, one primary action per view, voice first. Light theme only (neutral surfaces, thin borders, one accent color).
 
 ## Shared visual language (use everywhere, consistently)
 **Certainty badges** (icon + word + color, never color alone):
