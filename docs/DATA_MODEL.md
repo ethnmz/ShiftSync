@@ -1,96 +1,102 @@
-# Data Model (SQLModel + SQLite)
+# Data model
 
-Static data (assets, roster, rules, runbooks) lives in `config/*.yaml` and is loaded at startup. Persons and assets are also mirrored into tables for joins.
+Proposed. Aditri owns the tables. A field change is a shared-interface change and needs all four people. This file does not create a database.
+
+Static configuration (`config/slots.yaml`, `config/rules.yaml`, `config/assets.yaml`, `config/roster.yaml`) is an implementation task. Those files are not in the repo. Until they exist, code has nothing to load. Do not invent asset dependencies at runtime.
+
+Time is `clock.now()` only. The demo clock may be offset. Identifiers: items `I-0001`, facts `F-0001`, memos `M-0001`, questions `Q-0001`, checks `C-0001`.
 
 ## Enums
 
-```python
-Role          = "tech" | "lead" | "manager" | "vendor"
-MemoSource    = "imessage_voice" | "imessage_text" | "web" | "standup" | "seed"
-ItemKind      = "lockout_tagout" | "bypass" | "vendor_work" | "maintenance" | "alarm"
-              | "directive" | "observation" | "task"
-ItemStatus    = "open" | "monitoring" | "resolved"
-Severity      = "critical" | "warning" | "info"          # set ONLY by rules.py
-Action        = "bypassed" | "restored" | "locked_out" | "lockout_removed"
-              | "work_started" | "work_paused" | "work_resumed" | "work_completed"
-              | "alarm" | "alarm_cleared" | "reading" | "directive_issued" | "directive_lifted"
-              | "test_started" | "energize" | "load_increase" | "note"
-EventType     = "opened" | "updated" | "mentioned" | "clarified" | "severity_changed"
-              | "escalated_stale" | "acknowledged" | "ownership_transferred" | "resolved"
-              | "conflict_raised"
-HandoffStatus = "draft" | "outgoing_review" | "briefing" | "readback_review" | "complete"
+```text
+FactStatus     = confirmed | reported | unknown
+GapDisposition = ask | not_asked_low_priority
+Grade          = aligned | misunderstood | not_mentioned
+HandoffStatus  = draft | interviewing | confirmed | checking | correcting | signed
+MemoSource     = imessage_voice | imessage_text | web
+SlotName       = what_is_unfinished | who_verifies | current_state | rationale
+               | restore_condition | contingency | owner | due
+ItemKind       = vendor_return | equipment_condition | restriction
 ```
 
-Closing actions: `restored, lockout_removed, work_completed, alarm_cleared, directive_lifted`.
-Start actions (conflict-checked): `test_started, work_started, energize, load_increase`.
+`confirmed` is only stored after `facts/status.py` and `facts/verify.py` both pass. A hedge match forces `reported`.
 
-## Tables
+## Memo
 
-### Person
-`id (str, from roster), name, role, phone (E.164), shift_team ("night"|"day"|null), vendor_company (nullable)`
+`id`, `author_id`, `source`, `text`, `audio_path?`, `received_at`, `status` (`processed` | `needs_review` | `rejected`).
 
-### Asset
-`id ("BRK-4"), name, type ("breaker"|"ups"|"pdu"|"chiller"|"crac"|"generator"|"ats"|"valve"|"rack"|"hall"), hall, aliases (JSON list), feeds (JSON list of asset ids)`. Upstream lookup = reverse of `feeds`.
+`needs_review` means extraction failed twice or the quote check dropped every observation. No guessed facts are written.
 
-### Shift
-`id, team, lead_id, starts_at, ends_at, status ("active"|"handing_off"|"closed")`. Current shift = the one whose window contains `clock.now()`.
+## Item
 
-### Memo
-| field | type | notes |
-|---|---|---|
-| id | str | `M-0001` |
-| shift_id | str | |
-| author_id | str | Person |
-| source | MemoSource | |
-| text | str | transcript or text body |
-| audio_path | str? | `data/audio/M-0001.wav` |
-| received_at | datetime | `clock.now()` or scenario `at` |
-| status | str | `processed` \| `needs_review` \| `rejected` |
-| extraction_json | JSON | raw validated LLM output (for debugging/demo "show your work") |
+`id`, `kind`, `asset_id?` (null when the registry does not resolve it), `summary` (words from the note, not a new fact).
 
-### LedgerItem
-| field | type | notes |
-|---|---|---|
-| id | str | `L-0001` |
-| kind | ItemKind | |
-| title | str | short, e.g. "LOTO on Breaker 4 (Siemens, UPS-B battery work)" |
-| asset_ids | JSON list | primary first |
-| hall | str? | derived from primary asset |
-| status | ItemStatus | |
-| severity | Severity | rules-only |
-| state_detail | str | latest state in plain words, e.g. "Paused – vendor waiting on part; tag still on" |
-| vendor | str? | |
-| tag_holder | str? | for LOTO: who may remove the tag |
-| directive_scope | JSON? | for directives: `{hall, categories:[...], until}` |
-| contingency | str? | |
-| contingency_source | str? | `memo` \| `runbook` |
-| owner_id | str | current shift lead by default |
-| opened_at, opened_by, opened_memo_id | | |
-| last_update_at, last_mentioned_at | datetime | |
-| shifts_open | int | recomputed |
-| handoffs_unmentioned | int | consecutive completed handoffs where item wasn't covered in read-back or memos |
-| stale | bool | from stale.py |
-| resolved_at, resolved_by, resolved_memo_id | | |
+## Fact
 
-### ItemEvent (append-only audit trail)
-`id, item_id, type (EventType), at, actor_id?, memo_id?, quote?, detail (JSON)`
+`id`, `item_id`, `slot`, `status`, `text`, `quote`, `speaker_id`, `memo_id`, `quote_verified` (bool, set by code), `hedge_downgraded` (bool, set by code).
 
-### Clarification
-`id, handoff_id?, item_id?, memo_id, ask_to (person id), question, reason ("ambiguous_asset"|"unclear_status"|"missing_closure"|"rule"), priority (critical|warning|info), status ("queued"|"sent"|"answered"|"dismissed"), answer_text?, answer_memo_id?, asked_at?, answered_at?`
+Unknown follow-up, stored on the fact:
 
-### Conflict
-`id, memo_id, level ("HALT"|"WARN"), asset_id, action, message, blocking_item_ids (JSON), at, resolved (bool), override_by?, override_reason?`
+```json
+{ "owner_id": null, "due": null, "state": "UNASSIGNED" }
+```
 
-### Handoff
-`id, from_shift_id, to_shift_id, from_lead_id, to_lead_id, status (HandoffStatus), started_at, completed_at?, score (float?), score_breakdown (JSON?)`
+or, after a human answer:
 
-### Acknowledgment
-`id, handoff_id, item_id, person_id, method ("tap"|"readback"), at`
+```json
+{ "owner_id": "maya", "due": "2026-11-08T15:00:00Z", "state": "assigned", "assigned_by": "maya" }
+```
 
-### Readback
-`id, handoff_id, person_id, memo_id?, transcript, results (JSON list of {item_id, verdict: covered|missed|misstated, evidence_quote?, issue?}), at`
+`owner_id` and `due` are copied from a human answer only.
 
-## Derived values
-- **Facility status**: RED if any open critical item or unresolved HALT; AMBER if any open warning; else GREEN.
-- **shifts_open**: count of Shift windows overlapping `[opened_at, now]`.
-- **Handoff score**: see `rules.yaml → scoring`.
+## Question
+
+`id`, `handoff_id`, `phase` (`interview` | `check`), `about_fact_id?`, `about_slot`, `text`, `asked_at`, `answer_text?`, `answer_memo_id?`.
+
+Interview questions count toward the budget of 3. Check questions do not.
+
+## Check grade
+
+`id`, `question_id`, `fact_id`, `grade`, `evidence_quote?`, `correction?`.
+
+`evidence_quote` must verify against the answer text before code stores `aligned`.
+
+## Handoff
+
+`id`, `from_lead_id`, `to_lead_id?`, `status`, `questions_asked`, `budget` (default 3), `started_at`, `signed_at?`.
+
+## State transitions
+
+```text
+draft
+  -- note stored, extract finished --> interviewing
+interviewing
+  -- next critical gap, under budget --> interviewing
+  -- budget used or no critical gap left --> confirmed
+confirmed
+  -- incoming check starts --> checking
+checking
+  -- grade aligned, more safety facts --> checking
+  -- grade not aligned --> correcting
+correcting
+  -- answer still not aligned --> correcting
+  -- answer aligned, more safety facts --> checking
+sign from checking or correcting
+  -- gate fails --> status unchanged, blockers returned
+  -- gate passes --> signed
+```
+
+Signoff blockers are only:
+
+- a fact with `state: UNASSIGNED`
+- a confirmed safety fact whose latest grade is `misunderstood` or `not_mentioned`
+
+## Metrics snapshot
+
+Written by `handoff/metrics.py` for evaluation. Not a safety certificate.
+
+`completeness`, `interpretation`, `action_clarity`, `efficiency`. Each is a number from 0 to 1 computed from a scenario's ground truth. Definitions are in `docs/EVALUATION.md`. No snapshot exists until a scenario is run.
+
+## Not in this model
+
+There is no conflict table, no per-item tap acknowledgment, and no stale-item counter in the P0 schema. Those belonged to an earlier ledger draft. A later P2 may add them only after a team agreement, and only using dependencies that are already in configuration.

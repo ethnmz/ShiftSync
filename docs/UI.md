@@ -1,41 +1,35 @@
-# UI Spec (frontend/)
+# UI
 
-**Audience:** stressed shift leads on a wall screen or tablet. **Theme:** dark control room (`#0B0F14` background), high contrast, large type (base 18 px, headlines 32 px+). Severity colors: critical `#EF4444`, warning `#F59E0B`, info `#64748B`, ok `#22C55E`. Color is never the only signal: always include an icon and text label.
+Audience: the two shift leads. The pitch is the conversation, not a dashboard. Ethan owns `frontend/`. Build screens against `docs/API.md`. The app is not created yet. Poll `GET /handoff/current` every 1.5 seconds.
 
-**Global header (all screens):** site name · current shift + lead · simulated clock · **facility status pill** (RED/AMBER/GREEN) · active HALT banner (full-width red, sticky) when `active_halts` is non-empty.
+Color is never the only signal. `unknown` and UNASSIGNED use a text label, not a red "facility unsafe" banner. Do not display a site-wide safe or unsafe certification.
 
-Routes and screens, in demo order:
+## 1. `/handoff/out` Outgoing note
 
-## 1. `/` Floor Feed (night shift view)
-- **Left column (40%): Memo stream**, newest on top, animated in. Each card: author avatar/initials, time, source icon (🎙️ voice / 💬 text / 📋 stand-up), transcript, ▶ audio play, and **chips for what was extracted** (e.g. `BRK-4 · lockout · critical`). Chit-chat that was ignored is shown greyed ("ignored: coffee machine, badge reader") to prove we read everything.
-- **Right column (60%): Ledger board**: three lanes Critical / Warning / Info. Item card: equipment name (big), one-line state, age, `open N shifts`, STALE badge, vendor/tag-holder, ❓ if a clarification is pending. Click → **Item drawer** (event timeline with quotes + audio, contingency, linked memos).
-- Footer: "Log memo" text box (fallback ingest) + **Start handoff** button (lead only).
+One voice or text capture for the end-of-shift note. After ingest, show a single question card: the question text, who it is for, and an answer box. Show `questions_asked` of `budget` (for example "1 of 3"). No list of extra questions.
 
-## 2. `/handoff/outgoing` Outgoing check
-- Title: "Before you leave: 3 questions". List of clarifications: to whom, question, status (sent via iMessage ⏳ / answered ✅ with answer text). Web "answer here" fallback per question.
-- Gate panel on the right: checklist of blockers. **Send to day shift →** button enabled when the gate passes.
+## 2. `/handoff/record` Confirmed handoff
 
-## 3. `/handoff/briefing` I-PASS briefing (the main screen)
-- Top: huge status bar with headline (from `/handoff/briefing`).
-- Four stacked sections with I-PASS letters as large side labels:
-  **I** Severity reasons · **P** Item one-liners (critical first) · **A** Action list · **S** Contingencies ("IF … → THEN …", with a "suggested" tag for runbook-sourced items).
-- Each P item: one-liner, source quote (italic, with ▶), age/shift count, STALE badge, **Acknowledge** button (big, right-aligned). Acked → green check, who and when.
-- "Resolved this shift" collapsed at the bottom.
-- Persistent right rail: **Completeness meter** (radial %) + gate blockers + **Start read-back** button.
+Shown when status is `confirmed`. Three groups, in this order:
 
-## 4. `/handoff/readback` Read-back
-- Big mic button ("Hold to record", MediaRecorder → `POST /handoff/readback` multipart) **or** "Waiting for Jordan's iMessage voice note…" (the backend treats the incoming lead's voice note during `briefing` as the read-back).
-- Results list, one row per item: ✓ covered (green, with evidence quote) · ⚠ misstated (amber, issue text) · ✗ missed (red, pulsing, **Acknowledge** button).
-- When the gate passes: **Complete handoff** → confetti-free success screen: score, who acknowledged what, ownership transferred to Jordan.
+- Confirmed facts, each with its quote.
+- Reported facts, each marked hedged.
+- Unknowns. UNASSIGNED unknowns name the missing owner and due time and offer two fields a person must fill. Assigned unknowns show the person and the time they entered.
 
-## 5. Ask drawer (global, `/` key or button)
-- Chat-style input; answers show citation chips (memo id + quote, click → item/memo). Suggested questions: "Did the vendors finish the electrical work?", "What's bypassed right now?", "Anything I shouldn't touch in Hall B?"
+A primary button "Ask the incoming lead" calls `POST /check/start`. It stays disabled while any unknown is UNASSIGNED. The disabled state says the record cannot be signed off inside the app. It does not say the building is unsafe.
 
-## 6. Demo Control panel (press `D`, hidden)
-- Scenario steps with ▶ buttons (`POST /demo/step/{n}`), clock display + "advance 30 min", **Reset**, provider toggle indicator (Claude/Nemotron).
+## 3. `/handoff/in` Incoming check
 
-## Implementation notes
-- TanStack Query, `refetchInterval: 2000` on `/status`, `/items`, `/memos`, `/handoff/current`.
-- New critical item or HALT → toast + short sound (muted by default; toggle in header).
-- Build every screen against `src/api/fixtures/*.json` first (copy shapes from `docs/API.md`).
-- Keyboard: `A` acknowledge focused item, `J/K` move focus. Nice-to-have only.
+One open-ended question. The incoming lead answers in text or by voice. When status is `correcting`, show the correction under the answer, then the follow-up question. Do not offer a single "I acknowledge" button as a substitute.
+
+## 4. `/handoff/signed` Signed record
+
+Status `signed`. List facts, grades, corrections, and quotes. Footer line, always visible: "This record checks what was said against Shift A's confirmed note. It does not show that someone understood, and it does not clear equipment."
+
+## 5. `/` Support strip
+
+Shift name, simulated clock, and whether app signoff is blocked. Link to the active handoff screen. This strip is not the demo. Do not build a lane board, a floor plan, or a 3D view for P0.
+
+## Demo control
+
+A hidden panel for the people running the demo may call `POST /demo/clock` and, once a seed script exists, reset. Do not put that panel in the submitted video.

@@ -1,82 +1,87 @@
-# Product Spec: Handoff Ledger
+# Product: ShiftSync
 
-## 1. Problem
+Status: proposed spec. Ethan confirmed this scope. Diego, Akshi, and Aditri have not yet signed the shared interfaces in `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. Until they do, build to this document and treat a field change as a team decision.
 
-NorthMark's challenge: *"A missed warning, an unclear handoff, or the wrong information at the wrong time can turn a small issue into a major disruption."*
+`CLAUDE.md` is the product direction. This file is the feature list for that direction.
 
-Data center shift handoffs today are:
-- **Scattered**: Slack messages, whiteboard notes, a hurried email, a hallway conversation.
-- **Asynchronous**: the person who knows the details has gone home when the question comes up.
-- **Memory-dependent**: nobody checks that the incoming shift actually *understood* what they read.
-- **Short-lived**: issues that span several shifts get dropped ("orphaned bypasses").
+## Problem
 
-One missed sentence about a bypassed chiller or a lockout/tagout (LOTO) on a breaker can cause an outage, or put a technician in danger.
+Information is communicated, but the meaning does not always transfer. Shift A can say "the UPS vendor is coming back tomorrow, everything should be fine" and mean the work is unfinished. Shift B can hear that maintenance is done.
 
-## 2. Our answer
+Note lists, carried-forward tasks, and acknowledgment buttons already exist in other tools. Those are plumbing. They are not the pitch.
 
-**Handoff Ledger**: technicians text or send voice notes to an iMessage number while they work. AI turns them into a persistent, source-cited **risk ledger**, and the handoff itself follows a structured protocol borrowed from medicine.
+## What we build
 
-### Why I-PASS
-I-PASS is a structured handoff protocol adopted by many hospitals after a large multi-site study (NEJM, 2014) reported fewer medical errors. *(Verify the exact figures before quoting them on stage.)* We map it onto the data center:
+ShiftSync is a short two-way handoff over iMessage, with a web screen for the leads.
 
-| I-PASS | In Handoff Ledger |
-|---|---|
-| **I**llness severity | Facility status bar: RED / AMBER / GREEN (computed by rules) |
-| **P**atient summary | One line per open ledger item, grouped by equipment/hall |
-| **A**ction list | What the incoming shift must do, with owner and deadline |
-| **S**ituation awareness & contingency | "If X happens → do Y" for every critical item |
-| **S**ynthesis by receiver | **Read-back check**: incoming lead summarizes aloud; AI finds what they missed |
+1. The outgoing lead sends one end-of-shift voice note.
+2. The **Handoff Interviewer** asks only the missing critical questions, one at a time, at most three.
+3. The record that leaves Shift A states each fact as `confirmed`, `reported`, or `unknown`. An unknown without a human-assigned owner and due time is **UNASSIGNED** and blocks app signoff.
+4. The **Understanding Check** asks the incoming lead open-ended questions, compares the answers with Shift A's confirmed record, and corrects mismatches.
+5. Signoff stores a record with the quotes and the correction history. It does not certify understanding or a safe site.
 
-**Pitch line:** *"Hospitals reduced handoff errors with a structured protocol. Data centers still hand off with Slack messages. We brought that protocol to the data center floor, and AI enforces it."*
+Product principle: maximum understanding, minimum effort.
 
-## 3. Users
+## Five failure modes
 
-- **Floor technician**: busy, gloves on. Sends a voice note via iMessage. Never opens our web app.
-- **Outgoing shift lead (Shift A)**: answers clarification questions (via iMessage) before leaving.
-- **Incoming shift lead (Shift B)**: reads the briefing, does the read-back, acknowledges items. Uses the web app on a big screen or tablet.
-- **Site manager** (secondary): sees the audit trail and the handoff completeness score.
+| # | Failure | What the product does |
+|---|---|---|
+| 1 | Hidden assumptions ("it's handled") | Detect vague language and ask for the missing operational detail. |
+| 2 | False understanding (a tap with no explanation) | Open-ended check, then a correction loop. A click is not the check. |
+| 3 | Lost reasoning (knows what, not why) | Require `rationale`, `restore_condition`, and `contingency` when that slot is critical. |
+| 4 | Unresolved uncertainty that looks complete | Status is `confirmed`, `reported`, or `unknown`. Unknowns need a person and a due time. |
+| 5 | Handoff fatigue | Ask only missing critical slots, default budget 3, one question at a time. |
 
-## 4. Features and priorities
+## Facts
 
-**P0 = must exist for the demo. P1 = should exist. P2 = only if ahead of schedule.**
+- `confirmed`: the speaker stated it outright, the quote verifies against the transcript, and the hedge check did not fire.
+- `reported`: the speaker hedged ("I think", "should be fine", "probably") or the model claimed `confirmed` and code downgraded it.
+- `unknown`: the slot is missing, or the speaker said they do not know. Silence does not fill it.
 
-### P0: core loop
-1. **Ingest via Photon iMessage**: text and voice notes → speech-to-text → stored `Memo` with audio. Web/text ingest and the seed script use the same pipeline.
-2. **Extraction**: LLM turns a memo into structured `Observation`s (asset, action, vendor, quote, ambiguities), resolved against `config/assets.yaml`.
-3. **Persistent ledger**: reconcile observations into `LedgerItem`s (open → update → resolve) with an append-only event history. Items close **only** on an explicit closing action plus a verified quote.
-4. **Rules engine**: severity from `config/rules.yaml` (LOTO = critical, cooling/power bypass = critical, …).
-5. **Outgoing quality check**: when Shift A starts the handoff, the AI turns ambiguities into clarification questions, sends them via iMessage to the memo's author, and attaches the answers. The handoff can't move forward while questions on critical items are unanswered.
-6. **I-PASS briefing screen** for Shift B, with per-item **Acknowledge**, source quote, audio playback, age, "open for N shifts" and contingency.
-7. **Read-back check**: Shift B lead sends a voice note (or records in the web app) summarizing the handoff. AI grades each open critical/warning item as covered / missed / misstated. Missed critical items need an individual acknowledgment.
-8. **Conflict halt**: when a new memo starts an action (test, energize, start work) that conflicts with an open item (LOTO upstream in the dependency graph, paused vendor work, a stand-up directive), the system replies instantly in iMessage with **"HALT"** and shows a red alert on the dashboard.
-9. **Handoff gate + completeness score**: the handoff completes only when every critical item is acknowledged, critical clarifications are answered and the read-back is done. Score shown as a percentage.
+Code in `facts/status.py` applies the hedge lexicon from `config/slots.yaml`. The model cannot upgrade a hedge. Code in `facts/verify.py` drops a fact whose quote is not in the transcript at fuzzy ratio ≥ 0.85.
 
-### P1
-10. **Stale-item escalation**: items open across several shifts, or not mentioned in recent handoffs, get escalated ("Valve B bypassed 72 h across 9 shifts, not mentioned in last 4 handoffs").
-11. **Contingency plans**: from the memo if stated, otherwise from `config/runbooks.yaml` (labeled "suggested").
-12. **Stand-up capture**: record the pre-shift stand-up in the web app → extract **directives** ("no load tests in Hall C") → these feed the conflict check.
-13. **Ask the ledger**: Q&A drawer. Full ledger plus recent memos in context (no vector DB needed); answers cite memo IDs and say "not in the logs" when unknown.
-14. **Ownership transfer**: on handoff completion, every open item's owner moves to the incoming lead (logged as an event).
+Owners, due times, and equipment dependencies come from a human answer or from configuration. The model does not invent them.
 
-### P2
-15. Investigator agent with tool calls (search_memos, get_item_history, get_dependencies), mainly for the **Nvidia** track when run on Nemotron.
-16. Simulated building alarms feed → "unlogged anomaly" detection (an alarm with no memo about it).
-17. Slack notification for HALT events.
-18. Floor-plan view with items pinned to halls.
+## Interview
 
-### Explicitly out of scope
-Outlook/Calendar integration, real BMS/DCIM integrations, user auth beyond a roster, mobile app, multi-site support. Mention them as "future work" in the pitch.
+Critical gaps are chosen by `interview/gaps.py` and ordered by `interview/planner.py`. Safety slots come first, then an unknown with no owner, then rationale. Non-safety gaps past the budget are stored as `not_asked_low_priority`. They are not shown as done.
 
-## 5. Success criteria for the demo
-- A memo arrives via iMessage and becomes a ledger item on screen in **< 10 s**.
-- The ambiguous 03:15 memo produces a clarification question, and the answer resolves it.
-- The read-back that omits Breaker 4 is caught as **missed (critical)**.
-- "Starting UPS B load bank test" gets a **HALT** reply in iMessage within ~5 s, citing the Breaker 4 LOTO and the paused Siemens work.
-- The stale Valve B bypass appears in the briefing with its shift count.
+The outgoing budget is 3 questions for that lead. One question is in flight at a time.
 
-## 6. How this maps to judging
-- **Track fit:** directly targets "unclear handoff" and "wrong information at the wrong time".
-- **Trust:** rule-based safety decisions, verified source quotes, audit trail.
-- **Usability:** technicians use iMessage (no new app); leads get a single-purpose briefing screen.
-- **Photon track:** iMessage is the entire field interface, both inbound voice notes and outbound clarifications and HALT alerts.
-- **Nvidia track:** multi-step agent pipeline (extract → reconcile → rules → clarify → read-back) with tool use, running on Nemotron.
+## Understanding check
+
+`check/questions.py` picks the next open-ended question from confirmed facts, safety slots first. `check/grade.py` may label an answer `aligned`, `misunderstood`, or `not_mentioned`. Code accepts `aligned` only when the evidence quote verifies against the answer text. In doubt, the grade stays off `aligned`.
+
+A `misunderstood` or `not_mentioned` safety fact shows a correction and waits for another answer. Signoff stays blocked while any confirmed safety fact is still in that state. The grade means the answer text matched the record. It does not prove the person understood.
+
+## Signoff
+
+`handoff/gate.py` allows signoff only when:
+
+- no unknown is UNASSIGNED
+- no confirmed safety fact is still `misunderstood` or `not_mentioned`
+- the outgoing budget has been applied (asked, or explicitly not asked because it was low priority)
+
+The gate is an application lock. It does not control equipment and it does not clear anyone to do physical work.
+
+## Priority
+
+**P0, the demo:** ingest one voice note, extract source-backed facts, run the interview within the budget, show explicit unknowns, run the check and one correction, sign the record.
+
+**P1:** the four evaluation metrics in `docs/EVALUATION.md` on synthetic scenarios. No published scores until a run exists.
+
+**P2, not this core:** a conflict warning that uses dependencies already written in configuration, stale-item reminders, and a free-form ask box. Do not build a second ledger product beside the interview. Do not add those until the P0 path works and the team agrees.
+
+## Out of scope
+
+Real building controls, a certified safe state, a 3D facility view, multi-site support, and a claim that the team has qualified for a sponsor prize.
+
+## Demo success
+
+Using the fictional UPS vendor sentence in `docs/DEMO_SCRIPT.md`:
+
+- The hedged line cannot become a `confirmed` "maintenance is done."
+- The interview asks what is unfinished, within the three-question budget.
+- An unknown with no owner blocks signoff until a person assigns an owner and a due time.
+- The incoming answer "maintenance is done" is corrected against the confirmed record.
+- The signed screen shows quotes. It does not say the site is safe.

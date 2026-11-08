@@ -1,37 +1,35 @@
-# Team Plan: 4 people, overnight
+# Team plan
 
-> Times assume a Sunday-morning submission deadline; shift them if yours differs. Work **contract-first**: `docs/API.md` and `docs/DATA_MODEL.md` are frozen at 20:00 unless all four agree.
+Roles are confirmed. The module list is the one in `CLAUDE.md`. Shared files in `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md` are proposed. Building them still waits on agreement from all four people. This plan does not open that agreement by itself.
 
-## Roles
-
-| # | Owner | Area | Main files |
+| Person | Login | Role | Files |
 |---|---|---|---|
-| P1 | **Bridge & Voice** | Photon bridge, STT, ingest endpoints, iMessage UX, phone setup | `photon-bridge/`, `backend/app/stt/`, `routes/ingest.py`, `notify.py` |
-| P2 | **AI** | LLM provider abstraction, all 5 prompts, schemas, quote verification, scenario test | `backend/app/llm/`, `prompts/`, `pipeline/extract.py`, `handoff/clarify.py`, `readback.py`, `ask.py`, `tests/test_scenario.py` |
-| P3 | **Ledger core** | DB models, reconcile, rules, conflicts, stale, handoff state machine, gate/score, demo endpoints, seed | `models.py`, `pipeline/reconcile.py`, `rules.py`, `conflicts.py`, `stale.py`, `handoff/state.py`, `score.py`, `briefing.py`, `demo/` |
-| P4 | **Frontend & Demo** | All screens, design, fixtures, demo control panel, pitch, Devpost, video | `frontend/`, `docs/DEMO_SCRIPT.md` |
+| Ethan Meza | `ethnmz` | Frontend & Demo | `frontend/`, `docs/DEMO_SCRIPT.md` |
+| Diego Lozano | `Navibytes` | Bridge & Voice | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
+| Akshi Biswal | `biswalakshi` | AI | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py`, `backend/app/routes/ask.py` only if a later ask box is agreed |
+| Aditri Tangeti | `aditrit06` | Ledger Core | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/state.py`, `backend/app/handoff/gate.py`, `backend/app/handoff/metrics.py`, `backend/app/handoff/briefing.py` (the confirmed, reported, and unknown groups, not an I-PASS page), `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py`, `backend/tests/test_scenario.py` |
 
-## Milestones
+`ask.py` is not P0. Do not build it in the first slice. There is no `backend/app/pipeline/` tree and no `readback.py`. Do not add them beside this map.
 
-| Time | Milestone | Done when |
-|---|---|---|
-| 20:00 | **Scaffold** | Repos run; FastAPI `/health`; Vite app with routes; bridge echoes in terminal mode; config YAMLs load |
-| 22:00 | **Vertical slice** | Text memo via `POST /ingest/text` → extract → ledger item → visible on Floor Feed |
-| 00:00 | **iMessage live** | Voice note from a phone → transcript → item → reply in iMessage |
-| 02:00 | **All P0** | Clarifications, briefing, read-back, acks, gate, conflict HALT working end-to-end with `scenario.json` |
-| 04:00 | **P1 + polish** | Stale escalation, contingencies, stand-up capture, Ask drawer; `test_scenario.py` green |
-| 05:30 | **Feature freeze** | Only bug fixes after this |
-| 06:00 | **Rehearse ×3** | Full demo with live phone + replay fallback; record backup video |
-| 07:00 | **Submit** | Devpost (select NorthMark + Photon + Nvidia), public GitHub, video, README |
+Ethan may keep the local `ethan/frontend` checkout. Frontend work starts when he chooses to, against `docs/API.md`. The app is not ready now.
 
-## Interfaces to agree on first (by 20:00)
-1. `ExtractionResult` schema (P2 ↔ P3), in `docs/AI_PIPELINE.md`.
-2. Ingest response shape (P1 ↔ P3), in `docs/API.md`.
-3. Briefing / Gate / Score JSON (P3 ↔ P4), in `docs/API.md`. P4 builds on fixtures until then.
-4. Bridge `/send` (P1 ↔ P3).
+## Build order
 
-## Rules for the night
-- Commit small and often to `main` through short-lived branches; whoever breaks `test_scenario.py` fixes it.
-- Use Claude Code per area: start each session with "Read CLAUDE.md and docs/<your area>.md".
-- Don't add features at 4 a.m. Rehearse instead.
-- Someone sleeps 1–2 hours in rotation; the demo presenter should be rested.
+1. Agree the three shared docs, or leave them as this proposal.
+2. Add `config/slots.yaml`, `config/rules.yaml`, `config/assets.yaml`, and `config/roster.yaml`, plus `demo/scenario.json`, as an implementation task. They are not in the repo. Roster phones in that file must be fictional.
+3. Ingest a text note and store facts with statuses.
+4. Interview within the budget of 3, one question at a time.
+5. Block signoff on UNASSIGNED unknowns.
+6. Run the incoming check and one correction.
+7. Screens for that path only.
+8. Evaluation harness from `docs/EVALUATION.md`, with no filled-in scores.
+
+## Ownership inside shared directories
+
+`interview/` is split: Aditri owns `gaps.py` and `planner.py`. Akshi owns `session.py`.
+
+`check/` is split: Aditri owns `questions.py`. Akshi owns `grade.py` and `session.py`.
+
+`facts/` is split: Aditri owns `status.py`. Akshi owns `verify.py`.
+
+`handoff/` is Aditri's. `notes/ingest.py` is Diego's. `notes/extract.py` is Akshi's. `notes/reconcile.py` is Aditri's.
