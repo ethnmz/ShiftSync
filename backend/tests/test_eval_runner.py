@@ -30,9 +30,12 @@ class FakeLLM:
     async def judge(self, *, artifact, scenario, reader_answers, questions_asked, operator_answers):
         n = len([f for f in scenario["ground_truth_facts"] if f.get("critical")])
         ok = "unknown" in artifact  # pretend only the ShiftSync artifact keeps unknowns visible
-        return JudgeOut(critical_facts=[Flag(index=i, ok=ok) for i in range(n)],
-                        ambiguous_resolved=[Flag(index=0, ok=ok)], unknowns_preserved=[],
-                        missing_detected=[Flag(index=i, ok=True) for i in range(len(scenario["missing_in_notes"]))],
+        ev = artifact.splitlines()[0] if ok else ""  # quoted from the artifact, as the prompt requires
+        q_ev = questions_asked[0] if questions_asked else ""
+        return JudgeOut(critical_facts=[Flag(index=i, ok=ok, evidence=ev) for i in range(n)],
+                        ambiguous_resolved=[Flag(index=0, ok=ok, evidence=ev)], unknowns_preserved=[],
+                        missing_detected=[Flag(index=i, ok=True, evidence=q_ev)
+                                          for i in range(len(scenario["missing_in_notes"]))],
                         reader_grades=[ReaderGrade(index=0, correct=ok)],
                         incorrect_statements=[] if ok else [Incorrect(statement="UPS-A is fine", why="contradicts clearance")])
 
@@ -63,6 +66,7 @@ def test_full_run_with_fake_llm(data_dir):
     assert "unknown" in ss["examples"]["artifact"]
     assert normal["missing_details_detected"] is None  # ShiftSync-only metric
     assert normal["clarification_questions_asked"] is None
+    assert ss["missing_details_detected"]["mean"] == 1.0  # evidence from QUESTIONS ASKED counts here
     assert ss["critical_facts_transferred"]["mean"] == 1.0 and normal["critical_facts_transferred"]["mean"] == 0.0
     assert ss["shift_a_words_proxy"]["mean"] > normal["shift_a_words_proxy"]["mean"]  # effort is shown, not hidden
     # The raw notes involve no AI, so they can't "introduce" AI errors; the summary can.
@@ -85,6 +89,32 @@ def test_judge_cannot_invent_incorrect_statements(data_dir):
     conds = out["scenarios"]["vague_ups"]["conditions"]
     assert conds["summary"]["incorrect_facts_introduced"]["mean"] == 1
     assert conds["shiftsync"]["incorrect_facts_introduced"]["mean"] == 0
+
+
+def test_judge_credit_must_be_quoted_from_the_artifact(data_dir):
+    """The judge sees NOTES and OPERATOR ANSWERS; credit taken from them must score 0."""
+    class FromNotes(FakeLLM):
+        async def judge(self, *, artifact, scenario, reader_answers, questions_asked, operator_answers):
+            n = len([f for f in scenario["ground_truth_facts"] if f.get("critical")])
+            not_in_artifact = "the vendor confirmed UPS-A is cleared for full load"
+            return JudgeOut(critical_facts=[Flag(index=i, ok=True, evidence=not_in_artifact) for i in range(n)],
+                            ambiguous_resolved=[Flag(index=0, ok=True)],  # no evidence at all
+                            unknowns_preserved=[],
+                            missing_detected=[Flag(index=0, ok=True, evidence=not_in_artifact)],
+                            reader_grades=[], incorrect_statements=[])
+    out = asyncio.run(eval_run.run(runs=1, only="vague_ups", llm=FromNotes(),
+                                   analyzer=ScriptedAnalyzer([ups_a_extraction()])))
+    for name, c in out["scenarios"]["vague_ups"]["conditions"].items():
+        assert c["critical_facts_transferred"]["mean"] == 0.0, name
+        assert c["ambiguous_clarified"]["mean"] == 0.0, name
+        assert c["examples"]["ungrounded_credit_removed"]["critical_facts"]
+    assert out["scenarios"]["vague_ups"]["conditions"]["shiftsync"]["missing_details_detected"]["mean"] == 0.0
+
+
+def test_grounded_rejects_tiny_quotes():
+    flags = [Flag(index=0, ok=True, evidence="unknown"), Flag(index=1, ok=True, evidence="GEN-1 fuel level: unknown")]
+    kept, dropped = eval_run._grounded(flags, "GEN-1 fuel level: unknown (unknown)")
+    assert [f.ok for f in kept] == [False, True] and [d["index"] for d in dropped] == [0]
 
 
 def test_unavailable_llm_reports_not_run_without_numbers(data_dir, monkeypatch):

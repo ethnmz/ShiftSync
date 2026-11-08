@@ -44,6 +44,9 @@ class Flag(BaseModel):
     index: int
     ok: bool
     why: str = ""        # one short reason, kept in the results so a person can spot-check
+    # Word-for-word quote that earns ok=true. run.py checks it against the ARTIFACT (and, for
+    # missing_detected, QUESTIONS ASKED); an ok flag whose quote is not found there scores 0.
+    evidence: str = ""
 
 
 class ReaderGrade(BaseModel):
@@ -84,7 +87,13 @@ JUDGE_PROMPT = (
     "You grade a shift-handoff ARTIFACT (what the incoming operator reads) against GROUND TRUTH.\n"
     "Grade MEANING, not wording: a fact counts when a reader could understand it from the artifact in\n"
     "any wording, including field-style lines such as 'operational clearance: not_cleared (confirmed)'.\n"
-    "Return one entry per indexed input in each list, each with a short `why` (at most 15 words):\n"
+    "NOTES and OPERATOR ANSWERS are NOT seen by the incoming operator. Use them ONLY to check\n"
+    "  incorrect_statements, never to give credit.\n"
+    "EVIDENCE: every ok=true in critical_facts, ambiguous_resolved and unknowns_preserved needs\n"
+    "  `evidence` copied word for word from ARTIFACT, and only from ARTIFACT. For missing_detected the\n"
+    "  evidence may be copied from ARTIFACT or QUESTIONS ASKED. If you cannot quote it, set ok=false.\n"
+    "Return one entry per indexed input in each list, each with a short `why` (at most 15 words)\n"
+    "and `evidence` (the quote, or \"\" when ok=false):\n"
     "- critical_facts: ok when the fact's meaning is present AND it is not shown as MORE certain than the\n"
     "  ground truth (an unverified claim shown as fact is NOT ok). Showing it as less certain is ok.\n"
     "- ambiguous_resolved: ok when the phrase's real meaning is stated by a confirmed fact, OR the\n"
