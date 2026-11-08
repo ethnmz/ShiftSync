@@ -1,7 +1,7 @@
 """Per-handoff metrics (rules.yaml → metrics). Counts only what actually happened.
 
-shift_b_seconds needs a "briefing opened" timestamp that is not stored yet, so
-it stays None rather than being estimated.
+shift_b_seconds runs from the incoming lead's first briefing view (audit event
+`briefing_opened`) to verification. It is None until both exist; never estimated.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 from app import clock
 from app.followups.rules import counts
-from app.models import Fact, VerificationCheck
+from app.models import AuditEvent, Fact, VerificationCheck
 
 
 def _seconds(a, b) -> float | None:
@@ -37,6 +37,8 @@ def compute_metrics(session: Session, h) -> dict[str, Any]:
     attempts = [a for c in checks for a in (c.attempts or [])]
 
     first_statement = min((s.at for s in statements if s.role == "handoff"), default=None)
+    opened = session.exec(select(AuditEvent).where(AuditEvent.handoff_id == h.id,
+                                                   AuditEvent.type == "briefing_opened")).first()
     by_certainty = {c: sum(1 for f in current if f.certainty == c)
                     for c in ("confirmed", "reported", "unverified", "unknown")}
     edited = sum(1 for f in all_facts if f.review_state in ("operator_edited", "operator_rejected")
@@ -45,7 +47,7 @@ def compute_metrics(session: Session, h) -> dict[str, Any]:
 
     return {
         "shift_a_seconds": _seconds(first_statement, h.submitted_at),
-        "shift_b_seconds": None,
+        "shift_b_seconds": _seconds(opened.at if opened else None, h.verified_at),
         "clarification_questions_asked": sum(1 for q in questions if q.status != "not_asked"),
         "not_asked": sum(1 for q in questions if q.status == "not_asked"),
         "answered_unknown": sum(1 for q in questions if q.status == "answered_unknown"),
