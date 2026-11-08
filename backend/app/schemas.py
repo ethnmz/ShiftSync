@@ -1,4 +1,4 @@
-"""Validated model output for handoff clarification and verification."""
+"""Validated model output for handoff clarification, briefing and verification."""
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -28,6 +28,33 @@ class Contradiction(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
     fact_id: str = Field(min_length=1)
     claimed: str = Field(min_length=1)
+
+
+class BriefingLine(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+    text: str = Field(min_length=1)
+    item_id: str = Field(min_length=1)
+    fact_ids: list[str]
+
+    @field_validator("text")
+    @classmethod
+    def limit_line(cls, value: str) -> str:
+        if len(value.split()) > 22:
+            raise ValueError("Use at most 22 words per briefing line.")
+        return value
+
+
+class BriefingText(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+    headline: str = Field(min_length=1)
+    lines: list[BriefingLine] = Field(max_length=6)
+
+    @field_validator("headline")
+    @classmethod
+    def limit_headline(cls, value: str) -> str:
+        if len(value.split()) > 25:
+            raise ValueError("Use at most 25 words in the briefing headline.")
+        return value
 
 
 class GradeResult(BaseModel):
