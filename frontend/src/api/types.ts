@@ -52,6 +52,8 @@ export interface Statement {
 
 export interface Fact {
   id: string;
+  // Proposed in ethnmz/hackutd2026#10 (not merged): AI value kept after an edit.
+  ai_proposed_value?: string | null;
   slot: string;
   value: string;
   normalized?: string | null;
@@ -72,6 +74,8 @@ export interface Item {
   is_decision: boolean;
   open: boolean;
   facts: Fact[];
+  // Proposed in ethnmz/hackutd2026#10 (not merged). Non-null means carried over.
+  carried_over_from?: { handoff_id: string; item_id: string; handoff_created_at: string } | null;
 }
 
 export interface Question {
@@ -94,9 +98,13 @@ export interface FollowUp {
   item_id: string;
   description: string;
   missing_information: string;
-  owner: string | null;
+  // docs/API.md only shows null. ethnmz/hackutd2026#10 proposes {id, name};
+  // older notes used a roster id. Read it through ownerName().
+  owner: PersonRef | string | null;
   owner_label: string;
   deadline: string | null;
+  assigned_by?: PersonRef | null;
+  assigned_at?: string | null;
   status: "open" | "in_progress" | "closed";
 }
 
@@ -132,4 +140,63 @@ export interface HandoffDetail {
   status_line: StatusLine;
   // Shape not defined in docs/API.md yet.
   metrics: Record<string, unknown>;
+}
+
+// 409 from POST /handoffs/{id}/submit. Shape from ethnmz/hackutd2026#10 (not
+// merged); `message` is display-ready. Plain strings are still accepted.
+export interface Blocker {
+  code: string;
+  message: string;
+  item_id?: string;
+  fact_id?: string;
+  question_id?: string;
+}
+
+// GET /handoffs list rows. docs/API.md says "list" without a row shape, so
+// only the Handoff fields are relied on; the rest are shown when present.
+export type HandoffSummary = Handoff & Partial<Pick<HandoffDetail, "outgoing" | "incoming" | "status_line">>;
+
+export interface BriefingLine {
+  text: string;
+  item_id: string;
+  fact_ids: string[];
+  certainty: Certainty;
+}
+
+export interface Briefing {
+  headline: string;
+  lines: BriefingLine[];
+  items: Item[];
+  open_followups: FollowUp[];
+  disclaimer: string;
+}
+
+export type Verdict = "consistent" | "partially_consistent" | "inconsistent";
+export type CheckStatus = "pending" | "verified" | "needs_clarification" | "clarified_in_person";
+
+// Not in docs/API.md. Fields follow DATA_MODEL.md VerificationCheck without
+// the answer key (asked on the board). Returned by verification/start and as
+// VerificationAttempt.next_check.
+export interface VerificationCheck {
+  id: string;
+  item_id: string;
+  question: string;
+  status: CheckStatus;
+  attempts?: VerificationAttempt[];
+}
+
+export interface VerificationAttempt {
+  check_id: string;
+  attempt: number;
+  verdict: Verdict;
+  misconception: string | null;
+  conveyed_fact_ids: string[];
+  missing_fact_ids: string[];
+  contradictions: { fact_id: string; claimed: string }[];
+  feedback: string;
+  evidence: { statement_id: string; quote: string }[];
+  status: CheckStatus;
+  next_check: VerificationCheck | null;
+  // The answer as recorded (DATA_MODEL.md Attempt.answer_text); optional in the API example.
+  answer_text?: string;
 }
