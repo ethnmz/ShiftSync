@@ -37,11 +37,28 @@ const TONE: Record<Tone, string> = {
   danger: "bg-danger/10 text-danger border-danger/30",
 };
 
-// Small status chip. Always carries text (and usually an icon), never color alone.
+// Icon color per tone. Chips carry no fill or border; only the icon is tinted.
+const ICON_TONE: Record<Tone, string> = {
+  neutral: "text-muted",
+  accent: "text-accent",
+  ok: "text-ok",
+  info: "text-info",
+  warn: "text-warn",
+  unk: "text-unk",
+  danger: "text-danger",
+};
+
+// Small status label: plain text plus an icon, no colored pill. It still always
+// shows its words, so certainty (Unverified, Unknown) and priority stay visible
+// everywhere (CLAUDE.md section 5) without relying on color.
 export function Chip({ tone = "neutral", icon, children, title }: { tone?: Tone; icon?: ReactNode; children: ReactNode; title?: string }) {
   return (
-    <span title={title} className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-xs font-semibold ${TONE[tone]}`}>
-      {icon && <span aria-hidden>{icon}</span>}
+    <span title={title} className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-semibold text-muted">
+      {icon && (
+        <span aria-hidden className={ICON_TONE[tone]}>
+          {icon}
+        </span>
+      )}
       {children}
     </span>
   );

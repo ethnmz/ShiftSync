@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { FIXTURE_MODE, acknowledge, errorMessage, getBriefing, getHandoff } from "../../api/client";
-import type { BriefingLine, HandoffDetail, Item } from "../../api/types";
+import { acknowledge, errorMessage, getBriefing, getHandoff } from "../../api/client";
+import type { BriefingLine, Item } from "../../api/types";
 import { PageHeader } from "../../components/AppShell";
+import Transcript, { TranscriptHeader } from "../../components/Transcript";
+import Workspace, { TabBar } from "../../components/Workspace";
 import CertaintyBadge from "../../components/CertaintyBadge";
 import FactRow from "../../components/FactRow";
 import { Button, Card, Chip, Notice, PropRow, Skeleton, Spinner } from "../../components/ui";
@@ -13,35 +15,21 @@ import { useUser } from "../../session/user";
 import FollowUps from "./FollowUps";
 import UnderstandingCheck from "./UnderstandingCheck";
 
-function BriefingRow({ line, handoff }: { line: BriefingLine; handoff: HandoffDetail }) {
-  const [open, setOpen] = useState(false);
-  const facts = handoff.items.flatMap((i) => i.facts).filter((f) => line.fact_ids.includes(f.id));
+function BriefingRow({ line, onSelect }: { line: BriefingLine; onSelect: (factId: string) => void }) {
   return (
-    <li className="flex flex-col gap-2 px-4 py-3">
-      <div className="flex items-start gap-3">
-        <CertaintyBadge certainty={line.certainty} />
-        <p className="min-w-0 flex-1 text-sm leading-relaxed">{line.text}</p>
-        {facts.length > 0 && (
-          <Button size="sm" variant="ghost" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            {open ? "Hide source" : "❝ Source"}
-          </Button>
-        )}
-      </div>
-      {open && (
-        <ul className="ml-1 flex flex-col gap-1.5 border-l-2 border-line pl-3">
-          {facts.map((f) => (
-            <li key={f.id} className="text-sm">
-              <span className="italic">“{f.quote}”</span>
-              <span className="ml-2 text-xs text-faint">{handoff.outgoing.name}</span>
-            </li>
-          ))}
-        </ul>
+    <li className="flex items-start gap-3 py-4 first:pt-0">
+      <CertaintyBadge certainty={line.certainty} />
+      <p className="min-w-0 flex-1 leading-relaxed">{line.text}</p>
+      {line.fact_ids.length > 0 && (
+        <Button size="sm" variant="ghost" onClick={() => onSelect(line.fact_ids[0])} title="Show what was said">
+          ❝ Source
+        </Button>
       )}
     </li>
   );
 }
 
-function ItemCard({ item }: { item: Item }) {
+function ItemCard({ item, selectedFactId, onSelect }: { item: Item; selectedFactId: string | null; onSelect: (factId: string) => void }) {
   const unresolved = item.facts.some((f) => f.certainty === "unknown" || f.certainty === "unverified");
   const tone = item.priority === "critical" ? "danger" : item.priority === "important" ? "warn" : "neutral";
   const body = (
@@ -49,7 +37,7 @@ function ItemCard({ item }: { item: Item }) {
       {item.facts
         .filter((f) => f.review_state !== "operator_rejected")
         .map((f) => (
-          <FactRow key={f.id} fact={f} itemTitle={item.title} editable={false} busy={false} />
+          <FactRow key={f.id} fact={f} itemTitle={item.title} editable={false} busy={false} selected={selectedFactId === f.id} onSelect={() => onSelect(f.id)} />
         ))}
     </ul>
   );
@@ -111,6 +99,9 @@ export default function ReceiveScreen() {
     qc.invalidateQueries({ queryKey: ["briefing", id] });
   };
   const ack = useMutation({ mutationFn: () => acknowledge(id), onSuccess: refresh });
+  const [center, setCenter] = useState<"briefing" | "transcript">("briefing");
+  const [panel, setPanel] = useState<"status" | "check" | "source">("status");
+  const [selected, setSelected] = useState<string | null>(null);
 
   if (handoffQ.isLoading)
     return (
@@ -143,6 +134,75 @@ export default function ReceiveScreen() {
   const items = briefing?.items ?? byPriority(handoff.items);
   const isIncoming = user.id === handoff.incoming.id;
 
+  const facts = handoff.items.flatMap((i) => i.facts);
+  const fact = facts.find((f) => f.id === selected) ?? null;
+  const factItem = fact ? handoff.items.find((i) => i.facts.some((f) => f.id === fact.id)) : null;
+  const select = (fid: string) => {
+    setSelected(fid);
+    setPanel("source");
+  };
+
+  const status = (
+    <div className="flex flex-col gap-6">
+      <div>
+        <dl className="divide-y divide-line">
+          <PropRow label="From">{handoff.outgoing.name}</PropRow>
+          <PropRow label="To">{handoff.incoming.name}</PropRow>
+          <PropRow label="Submitted">{s.submitted_at ? formatClock(s.submitted_at) : "—"}</PropRow>
+          <PropRow label="Acknowledged">
+            {s.acknowledged_at ? (
+              <Chip tone="ok" icon="✓">
+                {formatClock(s.acknowledged_at)}
+              </Chip>
+            ) : (
+              <Chip tone="neutral" icon="○">
+                Not yet
+              </Chip>
+            )}
+          </PropRow>
+          <PropRow label="Understanding">
+            {s.verified_at ? (
+              <Chip tone="ok" icon="✓">
+                Verified {formatClock(s.verified_at)}
+                {handoff.state === "verified_with_assistance" ? " (assisted)" : ""}
+              </Chip>
+            ) : (
+              <Chip tone="neutral" icon="○">
+                {handoff.state === "verifying" ? "Check in progress" : "Not verified"}
+              </Chip>
+            )}
+          </PropRow>
+        </dl>
+        {handoff.state === "submitted" && (
+          <div className="flex flex-col gap-2 border-t border-line pt-4">
+            <Button variant="primary" onClick={() => ack.mutate()} disabled={ack.isPending || !isIncoming}>
+              {ack.isPending ? "Acknowledging…" : "Acknowledge receipt"}
+            </Button>
+            <p className="text-sm text-muted">
+              {isIncoming
+                ? "Records that you received this handoff. It doesn't mean you understood it, and it doesn't close anything."
+                : `Only ${handoff.incoming.name} can acknowledge. Switch the demo user.`}
+            </p>
+            {ack.isError && (
+              <Notice tone="danger" role="alert">
+                {errorMessage(ack.error, "Couldn't record the acknowledgment.")}
+              </Notice>
+            )}
+          </div>
+        )}
+        {s.acknowledged_at && !s.verified_at && (
+          <div className="flex flex-col items-start gap-2 border-t border-line pt-4">
+            <p className="text-sm text-muted">Acknowledged, understanding not yet verified.</p>
+            <Button size="sm" onClick={() => setPanel("check")}>
+              Go to the understanding check →
+            </Button>
+          </div>
+        )}
+      </div>
+      <FollowUps handoff={handoff} onChanged={refresh} />
+    </div>
+  );
+
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
@@ -154,109 +214,100 @@ export default function ReceiveScreen() {
               {handoff.outgoing.name} → {handoff.incoming.name}
             </span>
             {s.submitted_at && <span>Submitted {formatClock(s.submitted_at)}</span>}
-            {FIXTURE_MODE && <Chip tone="warn">Offline demo data</Chip>}
           </>
         }
       />
 
-      <div className="grid flex-1 grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
-        <div className="flex min-w-0 flex-col gap-6">
-          {briefing && <Notice tone="neutral">{briefing.disclaimer}</Notice>}
-
-          <Card>
-            <div className="border-b border-line px-4 py-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Briefing</h2>
-              {briefingQ.isLoading ? (
-                <div className="mt-2">
-                  <Spinner label="Loading the briefing…" />
-                </div>
-              ) : briefingQ.isError ? (
-                <div className="mt-2">
-                  <Notice tone="danger" role="alert" action={<Button size="sm" onClick={() => briefingQ.refetch()}>Retry</Button>}>
-                    {errorMessage(briefingQ.error, "Couldn't load the briefing.")}
-                  </Notice>
-                </div>
-              ) : (
-                <p className="mt-1 text-lg font-semibold leading-snug">{briefing?.headline}</p>
-              )}
-            </div>
-            {briefing && (
-              <ul className="divide-y divide-line">
-                {briefing.lines.map((l, i) => (
-                  <BriefingRow key={`${l.item_id}-${i}`} line={l} handoff={handoff} />
-                ))}
-              </ul>
+      <Workspace
+        flush
+        main={
+          <div className="flex flex-col gap-8">
+            <TabBar
+              label="Handoff view"
+              tabs={[
+                { id: "briefing", label: "Briefing" },
+                { id: "transcript", label: "Transcript" },
+              ]}
+              value={center}
+              onChange={setCenter}
+            />
+            {center === "briefing" ? (
+              <>
+                {briefing && <Notice tone="neutral">{briefing.disclaimer}</Notice>}
+                <section className="flex flex-col gap-4">
+                  {briefingQ.isLoading ? (
+                    <Spinner label="Loading the briefing…" />
+                  ) : briefingQ.isError ? (
+                    <Notice tone="danger" role="alert" action={<Button size="sm" onClick={() => briefingQ.refetch()}>Retry</Button>}>
+                      {errorMessage(briefingQ.error, "Couldn't load the briefing.")}
+                    </Notice>
+                  ) : (
+                    <h2 className="text-2xl font-semibold leading-snug">{briefing?.headline}</h2>
+                  )}
+                  {briefing && (
+                    <ul className="flex flex-col divide-y divide-line">
+                      {briefing.lines.map((l, i) => (
+                        <BriefingRow key={`${l.item_id}-${i}`} line={l} onSelect={select} />
+                      ))}
+                    </ul>
+                  )}
+                </section>
+                <section aria-labelledby="items" className="flex flex-col gap-3">
+                  <h2 id="items" className="text-xl font-semibold">
+                    What you're taking over
+                  </h2>
+                  {items.map((item) => (
+                    <ItemCard key={item.id} item={item} selectedFactId={selected} onSelect={select} />
+                  ))}
+                </section>
+              </>
+            ) : (
+              <>
+                <TranscriptHeader statements={handoff.statements} items={handoff.items} />
+                <Transcript statements={handoff.statements} facts={facts} questions={handoff.questions} selectedFact={fact} onSelectFact={select} />
+              </>
             )}
-          </Card>
-
-          <section aria-labelledby="items" className="flex flex-col gap-3">
-            <h2 id="items" className="text-xs font-semibold uppercase tracking-wide text-muted">
-              What you're taking over
-            </h2>
-            {items.map((item) => (
-              <ItemCard key={item.id} item={item} />
-            ))}
-          </section>
-
-          <UnderstandingCheck handoff={handoff} onChanged={refresh} />
-        </div>
-
-        {/* Properties panel */}
-        <aside aria-label="Handoff details" className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:self-start">
-          <Card className="px-4 py-2">
-            <dl className="divide-y divide-line">
-              <PropRow label="From">{handoff.outgoing.name}</PropRow>
-              <PropRow label="To">{handoff.incoming.name}</PropRow>
-              <PropRow label="Submitted">{s.submitted_at ? formatClock(s.submitted_at) : "—"}</PropRow>
-              <PropRow label="Acknowledged">
-                {s.acknowledged_at ? (
-                  <Chip tone="ok" icon="✓">
-                    {formatClock(s.acknowledged_at)}
-                  </Chip>
-                ) : (
-                  <Chip tone="neutral" icon="○">
-                    Not yet
-                  </Chip>
-                )}
-              </PropRow>
-              <PropRow label="Understanding">
-                {s.verified_at ? (
-                  <Chip tone="ok" icon="✓">
-                    Verified {formatClock(s.verified_at)}
-                    {handoff.state === "verified_with_assistance" ? " (assisted)" : ""}
-                  </Chip>
-                ) : (
-                  <Chip tone="neutral" icon="○">
-                    {handoff.state === "verifying" ? "Check in progress" : "Not verified"}
-                  </Chip>
-                )}
-              </PropRow>
-            </dl>
-            {handoff.state === "submitted" && (
-              <div className="flex flex-col gap-2 border-t border-line py-3">
-                <Button onClick={() => ack.mutate()} disabled={ack.isPending || !isIncoming}>
-                  {ack.isPending ? "Acknowledging…" : "Acknowledge receipt"}
-                </Button>
-                <p className="text-xs text-muted">
-                  {isIncoming
-                    ? "Records that you received this handoff. It doesn't mean you understood it, and it doesn't close anything."
-                    : `Only ${handoff.incoming.name} can acknowledge. Switch the demo user.`}
-                </p>
-                {ack.isError && (
-                  <Notice tone="danger" role="alert">
-                    {errorMessage(ack.error, "Couldn't record the acknowledgment.")}
-                  </Notice>
-                )}
+          </div>
+        }
+        panelTabs={
+          <TabBar
+            label="Receive panel"
+            tabs={[
+              { id: "status", label: "Status" },
+              { id: "check", label: "Check" },
+              { id: "source", label: "Source" },
+            ]}
+            value={panel}
+            onChange={setPanel}
+          />
+        }
+        panel={
+          panel === "status" ? (
+            status
+          ) : panel === "check" ? (
+            <UnderstandingCheck handoff={handoff} onChanged={refresh} />
+          ) : fact && factItem ? (
+            <div className="flex flex-col gap-5">
+              <div>
+                <p className="text-sm text-muted">Selected fact</p>
+                <h3 className="text-xl font-semibold">{factItem.title}</h3>
               </div>
-            )}
-            {s.acknowledged_at && !s.verified_at && (
-              <p className="border-t border-line py-3 text-xs text-muted">Acknowledged, understanding not yet verified.</p>
-            )}
-          </Card>
-
-          <FollowUps handoff={handoff} onChanged={refresh} />
-        </aside>
-      </div>
+              <ul className="-mx-3">
+                <FactRow fact={fact} itemTitle={factItem.title} editable={false} busy={false} />
+              </ul>
+              <div className="border-t border-line pt-5">
+                <p className="mb-4 text-sm text-muted">Where it came from</p>
+                <Transcript statements={handoff.statements.filter((x) => x.id === fact.source_statement_id)} facts={facts} questions={handoff.questions} selectedFact={fact} />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-16 text-center">
+              <p className="text-lg font-semibold">Pick a line to check</p>
+              <p className="max-w-xs text-muted">Select Source on a briefing line, a quote, or an underlined line in the transcript to see what was said.</p>
+            </div>
+          )
+        }
+      />
     </div>
   );
 }

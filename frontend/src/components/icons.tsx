@@ -63,3 +63,15 @@ export const HelpIcon = () => (
     <path d="M9.8 9.6a2.3 2.3 0 1 1 3.3 2.1c-.7.4-1.1.9-1.1 1.7M12 16.5v.1" />
   </svg>
 );
+
+// ShiftSync mark: two opposing arrows (one shift hands over, the other takes
+// over) on an ink tile. Used in place of the wordmark.
+export const Logo = ({ size = 32 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" role="img" aria-label="ShiftSync">
+    <rect width="32" height="32" rx="9" className="fill-ink" />
+    <g fill="none" stroke="white" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 12.5h13M18.5 9l3.5 3.5-3.5 3.5" />
+      <path d="M23 19.5H10M13.5 16 10 19.5l3.5 3.5" />
+    </g>
+  </svg>
+);

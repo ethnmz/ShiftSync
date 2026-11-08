@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { DEMO_USERS, useUser } from "../session/user";
-import { ChartIcon, ClockIcon, HomeIcon, InboxIcon, PeopleIcon, PlusCircleIcon } from "./icons";
+import { ChartIcon, ClockIcon, HomeIcon, InboxIcon, Logo, PeopleIcon, PlusCircleIcon } from "./icons";
 
 // Built screens only. History, Supervisor and Evaluation are P1 in
 // docs/PRODUCT.md and are listed as not built rather than linked.
@@ -16,15 +16,6 @@ const LATER = [
   { label: "Evaluation", icon: <ChartIcon /> },
 ];
 
-export function initials(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 export default function AppShell({ children }: { children: ReactNode }) {
   const { user, setUser } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -32,10 +23,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-1">
-        <span className="text-2xl font-semibold tracking-tighter">shiftsync.</span>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent" aria-hidden>
-          {initials(user.name)}
-        </span>
+        <Logo />
       </div>
 
       {/* Workspace block: who is using the demo and on which shift. */}
@@ -99,7 +87,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-2 md:hidden">
-          <span className="text-xl font-semibolder">shiftsync.</span>
+          <Logo size={28} />
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}

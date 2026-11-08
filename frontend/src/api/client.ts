@@ -13,7 +13,7 @@ import * as sim from "./fixtures/sim";
 
 // Fixtures by default, because no backend runs yet. Set VITE_API_MODE=live to
 // call the FastAPI server through the Vite /api proxy. Fixture responses come
-// from ./fixtures/sim and are labeled "Offline demo data" in the shell.
+// from ./fixtures/sim.
 export const FIXTURE_MODE = import.meta.env.VITE_API_MODE !== "live";
 const LIVE = !FIXTURE_MODE;
 
