@@ -2,9 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens. Neutral surfaces, thin borders, one accent, and semantic
-   colors for the four certainty levels. docs/UI.md asks for light and dark
-   themes with dark as the default (night shift); both share these names. */
+/* Design tokens. Light neutral surfaces, thin borders, one accent, and
+   semantic colors for the four certainty levels. Light only. */
 :root {
   --bg: 247 247 248;
   --surface: 255 255 255;
@@ -23,25 +22,6 @@
   --unk: 112 52 210;
   --danger: 196 32 38;
   color-scheme: light;
-}
-
-.dark {
-  --bg: 14 16 20;
-  --surface: 21 24 30;
-  --subtle: 28 32 39;
-  --line: 40 45 54;
-  --line-strong: 58 64 76;
-  --ink: 232 235 240;
-  --muted: 160 167 180;
-  --faint: 118 125 139;
-  --accent: 118 146 255;
-  --accent-ink: 12 14 20;
-  --ok: 92 214 134;
-  --info: 110 168 255;
-  --warn: 245 182 66;
-  --unk: 176 148 255;
-  --danger: 255 120 120;
-  color-scheme: dark;
 }
 
 html {

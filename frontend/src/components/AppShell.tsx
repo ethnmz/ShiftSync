@@ -1,8 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { FIXTURE_MODE } from "../api/client";
 import { DEMO_USERS, useUser } from "../session/user";
-import { applyTheme, readTheme } from "../theme";
 
 // Built screens only. History, Supervisor and Evaluation are P1 in
 // docs/PRODUCT.md and are listed as not built rather than linked.
@@ -14,10 +13,8 @@ const LATER = ["History", "Supervisor", "Evaluation"];
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { user, setUser } = useUser();
-  const [theme, setTheme] = useState(readTheme);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => applyTheme(theme), [theme]);
 
   const nav = (
     <nav aria-label="Main" className="flex flex-col gap-0.5">
@@ -77,14 +74,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
         >
           {FIXTURE_MODE ? "Offline demo data" : "Live API"}
         </span>
-        <button
-          type="button"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="min-h-[36px] rounded-md border border-line-strong px-2.5 text-xs font-medium text-muted hover:text-ink"
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-        >
-          {theme === "dark" ? "☀ Light" : "☾ Dark"}
-        </button>
       </div>
     </div>
   );
