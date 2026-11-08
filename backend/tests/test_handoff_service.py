@@ -310,3 +310,55 @@ def test_unverified_quote_is_dropped(env):
     d = client.get(f"/api/handoffs/{hid}").json()
     ups = _item(d, asset="UPS-B")
     assert ups["facts"] == []  # the invented "complete" never enters the record
+
+
+def test_scoped_answers_update_the_asked_item_even_if_model_picks_another_kind(env):
+    """Reproduces the live Lightning run: answers came back as new items of other kinds."""
+    client, analyzer = env
+    clock.set_now(STEP[1]["at"])
+    hid = client.post("/api/handoffs", json={"outgoing_id": "maya", "incoming_id": "jordan"},
+                      headers=H("maya")).json()["id"]
+    analyzer.push(step2_extraction())
+    _say(hid, STEP[2]["text"], analyzer)
+    d = client.get(f"/api/handoffs/{hid}").json()
+    ups, cool = _item(d, asset="UPS-B"), _item(d, kind="inspection")
+    q1 = _pending(d)
+    analyzer.push(Extraction(items=[EI(kind="vendor_work", title="UPS-B maintenance", asset_id="UPS-B", facts=[
+        EF("remaining_work", "Final load test", "confirmed", "the vendor couldn't do the final load test"),
+        EF("rationale", "Replacement battery module didn't arrive", "confirmed",
+           "The replacement battery module didn't arrive"),
+    ])]))
+    d = client.post(f"/api/handoffs/{hid}/questions/{q1['id']}/answer", json={"text": STEP[3]["text"]},
+                    headers=H("maya")).json()
+    q2 = _pending(d)
+    n_items = len(d["items"])
+
+    # Step 4 as the live model returned it: a separate "bypass" item, no asset, no link.
+    analyzer.push(Extraction(items=[EI(kind="bypass", title="Maintenance bypass status", asset_id=None, facts=[
+        EF("current_mode", "maintenance bypass", "confirmed", "It's still in maintenance bypass"),
+        EF("rationale", "not cleared until vendor finishes load test and signs off", "confirmed",
+           "It's not cleared until the vendor finishes the load test and signs off"),
+        EF("restore_condition", "vendor finishes the load test and signs off", "confirmed",
+           "until the vendor finishes the load test and signs off"),
+    ])]))
+    d = client.post(f"/api/handoffs/{hid}/questions/{q2['id']}/answer", json={"text": STEP[4]["text"]},
+                    headers=H("maya")).json()
+    assert len(d["items"]) == n_items  # no new item
+    ups4 = _item(d, asset="UPS-B")
+    slots = {f["slot"]: f for f in ups4["facts"]}
+    assert "battery module" in slots["rationale"]["value"]  # UPS-B's own rationale is kept
+    assert "signs off" in slots["bypass_rationale"]["value"]  # the bypass one is kept beside it
+    assert slots["current_mode"]["value"] == "maintenance bypass"
+    q3 = _pending(d)
+    assert q3["item_id"] == cool["id"]  # the asked clearance slot isn't asked again
+
+    # Step 5 as the live model returned it: a "vendor_work" item for Chiller 2, not linked.
+    analyzer.push(Extraction(items=[EI(kind="vendor_work", title="Chiller 2 vendor afternoon visit", asset_id="CHL-2",
+                                       facts=[EF("work_status", "unknown", "unknown",
+                                                 "I honestly don't know if they finished", "unknown")])]))
+    d = client.post(f"/api/handoffs/{hid}/questions/{q3['id']}/answer", json={"text": STEP[5]["text"]},
+                    headers=H("maya")).json()
+    assert len(d["items"]) == n_items
+    chl = _item(d, asset="CHL-2")
+    assert chl["id"] == cool["id"] and _fact(chl, "work_status")["certainty"] == "unknown"
+    assert d["state"] == "in_review" and d["budget"]["used"] == 3
