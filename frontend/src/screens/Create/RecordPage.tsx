@@ -44,7 +44,7 @@ function Reply({ handoff, onContinue }: { handoff: HandoffDetail; onContinue: ()
           return (
             <li key={item.id} className="flex flex-wrap items-center gap-2 text-sm">
               <CertaintyBadge certainty={lowest} />
-              <span className="font-medium">{item.title}</span>
+              <span className="font-semibold">{item.title}</span>
               {item.priority === "critical" && <span className="text-xs font-semibold text-danger">Critical</span>}
             </li>
           );
@@ -266,7 +266,7 @@ export default function RecordPage() {
               <p className="px-4 py-3 text-center text-sm text-muted">{RECORDER_ERROR_TEXT.unsupported}</p>
             ) : rec.recording ? (
               <div className="flex items-center gap-3 rounded-full bg-ink px-3 py-2 text-bg">
-                <button type="button" onClick={rec.cancel} className="min-h-[40px] rounded-full px-3 text-sm font-medium text-bg/70 hover:text-bg">
+                <button type="button" onClick={rec.cancel} className="min-h-[40px] rounded-full px-3 text-sm font-semibold text-bg/70 hover:text-bg">
                   Discard
                 </button>
                 <div className="min-w-0 flex-1 overflow-hidden" aria-hidden>

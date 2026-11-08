@@ -260,7 +260,7 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
                 }}
               >
                 <label className="flex flex-col gap-1 text-sm">
-                  <span className="font-medium">What was clarified?</span>
+                  <span className="font-semibold">What was clarified?</span>
                   <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="rounded-md border border-line-strong bg-surface p-2" />
                 </label>
                 {clarify.isError && (

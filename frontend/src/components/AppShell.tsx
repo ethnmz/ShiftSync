@@ -33,7 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-1">
-        <span className="text-[26px] font-bold tracking-tighter">shiftsync.</span>
+        <span className="text-2xl font-semibold tracking-tighter">shiftsync.</span>
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent" aria-hidden>
           {initials(user.name)}
         </span>
@@ -53,7 +53,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             id="demo-user"
             value={user.id}
             onChange={(e) => setUser(e.target.value)}
-            className="-ml-1 max-w-full rounded-md bg-transparent px-1 text-base font-medium hover:bg-subtle"
+            className="-ml-1 max-w-full rounded-md bg-transparent px-1 text-base font-semibold hover:bg-subtle"
             title="Demo user, not sign-in"
           >
             {DEMO_USERS.map((u) => (
@@ -110,13 +110,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-2 md:hidden">
-          <span className="text-xl font-bold tracking-tighter">shiftsync.</span>
+          <span className="text-xl font-semibolder">shiftsync.</span>
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            className="min-h-touch rounded-lg border border-line-strong px-4 text-sm font-medium"
+            className="min-h-touch rounded-lg border border-line-strong px-4 text-sm font-semibold"
           >
             {menuOpen ? "Close" : "Menu"}
           </button>
@@ -137,7 +137,7 @@ export function PageHeader({ title, meta, actions }: { title: ReactNode; meta?: 
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-surface px-4 py-4 lg:px-8">
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-xl font-semibold">{title}</h1>
         {meta && <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-muted">{meta}</div>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

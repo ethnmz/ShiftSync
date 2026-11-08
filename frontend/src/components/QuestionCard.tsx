@@ -51,7 +51,7 @@ export default function QuestionCard({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="text-sm font-medium text-muted">{eyebrow}</div>
+      <div className="text-sm font-semibold text-muted">{eyebrow}</div>
       <h2 className="text-xl font-semibold leading-snug">{question}</h2>
       {why && (
         <p className="flex gap-2 text-sm text-warn">
@@ -64,7 +64,7 @@ export default function QuestionCard({
       )}
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="answer" className="text-sm font-medium">
+        <label htmlFor="answer" className="text-sm font-semibold">
           Your answer
         </label>
         {rec.recording ? (

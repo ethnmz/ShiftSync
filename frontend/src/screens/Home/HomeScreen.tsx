@@ -37,7 +37,7 @@ function greeting() {
 function ActionLink({ to, children }: { to: string | null; children: ReactNode }) {
   if (!to)
     return (
-      <span aria-disabled="true" className="inline-flex min-h-[44px] min-w-[96px] items-center justify-center rounded-lg bg-subtle px-5 text-sm font-medium text-faint">
+      <span aria-disabled="true" className="inline-flex min-h-[44px] min-w-[96px] items-center justify-center rounded-lg bg-subtle px-5 text-sm font-semibold text-faint">
         {children}
       </span>
     );
@@ -117,11 +117,11 @@ export default function HomeScreen() {
     <div className="relative flex-1 px-4 pb-28 pt-6 sm:px-10 lg:px-14">
       <div className="mx-auto max-w-[1180px]">
         <div className="flex justify-end">
-          <a href="https://github.com/ethnmz/hackutd2026/issues/1" className="inline-flex items-center gap-2 text-sm font-medium text-ink hover:underline">
+          <a href="https://github.com/ethnmz/hackutd2026/issues/1" className="inline-flex items-center gap-2 text-sm font-semibold text-ink hover:underline">
             <HelpIcon /> Team board
           </a>
         </div>
-        <h1 className="mt-6 text-4xl font-semibold tracking-tighter sm:text-[44px]">
+        <h1 className="mt-6 text-4xl font-semibold">
           {greeting()}, {user.name.split(" ")[0]}!
         </h1>
 
@@ -136,9 +136,9 @@ export default function HomeScreen() {
         {/* Hero */}
         <section className="mt-8 grid overflow-hidden rounded-2xl border border-line bg-[#fdfbf6] lg:grid-cols-[1.1fr_1fr]">
           <div className="flex flex-col items-start gap-6 p-8 sm:p-10">
-            <h2 className="max-w-lg text-3xl font-semibold leading-tight tracking-tighter sm:text-[38px]">{hero.title}</h2>
+            <h2 className="max-w-lg text-3xl font-semibold">{hero.title}</h2>
             <p className="max-w-md text-muted">{hero.body}</p>
-            <Link to={hero.to} className="inline-flex min-h-[52px] items-center rounded-xl bg-ink px-6 text-base font-medium text-white hover:bg-ink/90">
+            <Link to={hero.to} className="inline-flex min-h-[52px] items-center rounded-xl bg-ink px-6 text-base font-semibold text-white hover:bg-ink/90">
               {hero.cta}
             </Link>
           </div>

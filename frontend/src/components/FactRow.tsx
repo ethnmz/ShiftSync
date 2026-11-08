@@ -35,11 +35,11 @@ export default function FactRow({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-muted">{slotLabel(fact.slot)}</span>
+            <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted">{slotLabel(fact.slot)}</span>
             <CertaintyBadge certainty={fact.certainty} />
             <ReviewChip state={fact.review_state} />
           </div>
-          <p className={`mt-1 font-medium leading-snug ${rejected ? "text-faint line-through" : ""}`}>{fact.value}</p>
+          <p className={`mt-1 font-semibold leading-snug ${rejected ? "text-faint line-through" : ""}`}>{fact.value}</p>
           {fact.review_state === "operator_edited" && fact.ai_proposed_value && (
             <p className="text-xs text-faint">AI had: “{fact.ai_proposed_value}”</p>
           )}
@@ -120,11 +120,11 @@ function FactEditor({ fact, busy, onCancel, onSave }: { fact: Fact; busy: boolea
       }}
     >
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Value</span>
+        <span className="font-semibold">Value</span>
         <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} className="min-h-touch rounded-lg border border-line-strong bg-surface px-3 text-base" />
       </label>
       <fieldset className="flex flex-col gap-1 text-sm">
-        <legend className="mb-1 font-medium">Certainty</legend>
+        <legend className="mb-1 font-semibold">Certainty</legend>
         <div className="flex flex-wrap gap-1.5">
           {LEVELS.map((c) => (
             <label

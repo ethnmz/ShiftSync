@@ -122,7 +122,7 @@ export default function ClarifyStage({
           <ul className="flex flex-col divide-y divide-line">
             {handoff.not_asked.map((n, i) => (
               <li key={`${n.item_id}-${i}`} className="flex flex-wrap gap-x-2 py-3 first:pt-0 last:pb-0">
-                <span className="font-medium">{titleOf(n.item_id)}</span>
+                <span className="font-semibold">{titleOf(n.item_id)}</span>
                 <span className="text-muted">{n.slots.map(slotLabel).join(", ")}</span>
                 <span className="text-faint">· {n.reason}</span>
               </li>

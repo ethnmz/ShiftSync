@@ -23,7 +23,7 @@ function AssignForm({ f, onDone }: { f: FollowUp; onDone: () => void }) {
       }}
     >
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Owner</span>
+        <span className="font-semibold">Owner</span>
         <select value={owner} onChange={(e) => setOwner(e.target.value)} required className="min-h-[40px] rounded-md border border-line-strong bg-surface px-2">
           <option value="" disabled>
             Pick a person
@@ -37,7 +37,7 @@ function AssignForm({ f, onDone }: { f: FollowUp; onDone: () => void }) {
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">
+        <span className="font-semibold">
           Deadline <span className="font-normal text-faint">(optional)</span>
         </span>
         <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="min-h-[40px] rounded-md border border-line-strong bg-surface px-2" />
@@ -71,7 +71,7 @@ function CloseForm({ f, onDone }: { f: FollowUp; onDone: () => void }) {
       }}
     >
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-medium">Who verified what?</span>
+        <span className="font-semibold">Who verified what?</span>
         <textarea
           rows={2}
           value={text}

@@ -14,10 +14,10 @@ export default function FollowUpRow({ followup, itemTitle, children }: { followu
   return (
     <li className="flex flex-col gap-1.5 px-4 py-3 text-sm">
       <div className="flex flex-wrap items-center gap-1.5">
-        {itemTitle && <span className="text-xs font-medium uppercase tracking-wide text-muted">{itemTitle}</span>}
+        {itemTitle && <span className="text-xs font-semibold uppercase tracking-wide text-muted">{itemTitle}</span>}
         {closed && <Chip tone="neutral" icon="✓">Closed</Chip>}
       </div>
-      <p className={`font-medium ${closed ? "text-faint line-through" : ""}`}>{followup.description}</p>
+      <p className={`font-semibold ${closed ? "text-faint line-through" : ""}`}>{followup.description}</p>
       <p className="text-muted">Missing: {followup.missing_information}</p>
       <div className="flex flex-wrap gap-1.5">
         <Chip tone={owner ? "neutral" : "warn"} icon={owner ? "●" : "○"}>

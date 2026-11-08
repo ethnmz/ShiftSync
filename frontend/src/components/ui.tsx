@@ -79,7 +79,7 @@ export function Notice({
   const icon = tone === "danger" ? "✕" : tone === "warn" ? "⚠" : tone === "ok" ? "✓" : tone === "unk" ? "?" : "i";
   return (
     <div role={role} className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm ${TONE[tone]}`}>
-      <span aria-hidden className="mt-px font-bold">
+      <span aria-hidden className="mt-px font-semibold">
         {icon}
       </span>
       <div className="min-w-0 flex-1 text-ink">
@@ -142,7 +142,7 @@ export function DashCard({
     <section className={`rounded-2xl border border-line bg-surface p-6 sm:p-8 ${className}`}>
       <div className="mb-6 flex items-center gap-4">
         <Tile>{icon}</Tile>
-        <h2 className="text-xl font-medium">{title}</h2>
+        <h2 className="text-xl font-semibold">{title}</h2>
         {aside && <div className="ml-auto text-sm text-muted">{aside}</div>}
       </div>
       {children}
