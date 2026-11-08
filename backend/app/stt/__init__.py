@@ -27,7 +27,8 @@ class Transcript:
 def transcribe(audio_path: str | Path) -> Transcript:
     """Transcribe one recording. Raises STTError instead of ever returning guessed or empty text."""
     # app/config.py has no STT settings, so read STT_PROVIDER directly.
-    name = (os.environ.get("STT_PROVIDER") or "openai").strip().lower()
+    # Local is the default because it needs no key and is the provider tested end to end.
+    name = (os.environ.get("STT_PROVIDER") or "local").strip().lower()
     backend = providers.PROVIDERS.get(name)
     if backend is None:
         raise STTError(f"Unknown STT_PROVIDER {name!r} (use 'openai' or 'local').")

@@ -48,9 +48,9 @@ def test_returns_trimmed_provider_text(monkeypatch, recording, fake_ffmpeg):
     assert result == stt.Transcript(text="UPS B is still in maintenance bypass.", provider="openai")
 
 
-def test_defaults_to_openai(monkeypatch, recording, fake_ffmpeg):
-    monkeypatch.setitem(providers.PROVIDERS, "openai", lambda wav, prompt: "hello")
-    assert stt.transcribe(recording).provider == "openai"
+def test_defaults_to_local(monkeypatch, recording, fake_ffmpeg):
+    monkeypatch.setitem(providers.PROVIDERS, "local", lambda wav, prompt: "hello")
+    assert stt.transcribe(recording).provider == "local"
 
 
 @pytest.mark.parametrize("silence", ["", "   ", None])
