@@ -20,6 +20,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from pydantic import BaseModel, field_validator
 from rapidfuzz import fuzz
 
 from app import config
@@ -96,10 +97,67 @@ def _prompt(name: str) -> str:
     return (config.BACKEND_DIR / "app" / "prompts" / f"{name}.md").read_text(encoding="utf-8")
 
 
+def _max_words(v: str, n: int) -> str:
+    if len(v.split()) > n:
+        raise ValueError(f"at most {n} words")
+    return v
+
+
+class _ClarificationText(BaseModel):
+    """Fallback mirror of AI_PIPELINE.md's ClarificationText, used until app.schemas defines it."""
+    text: str
+    why_asked: str
+
+    @field_validator("text")
+    @classmethod
+    def _text(cls, v: str) -> str:
+        return _max_words(v, 30)
+
+    @field_validator("why_asked")
+    @classmethod
+    def _why(cls, v: str) -> str:
+        return _max_words(v, 10)
+
+
+class _BriefingText(BaseModel):
+    headline: str
+    lines: list[dict[str, Any]]
+
+    @field_validator("headline")
+    @classmethod
+    def _headline(cls, v: str) -> str:
+        return _max_words(v, 25)
+
+
+class _VerificationQuestionText(BaseModel):
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def _text(cls, v: str) -> str:
+        return _max_words(v, 25)
+
+
+_FALLBACK_SCHEMAS = {"ClarificationText": _ClarificationText, "BriefingText": _BriefingText,
+                     "VerificationQuestionText": _VerificationQuestionText}
+
+
+def _schema(name: str) -> type[BaseModel]:
+    """Akshi's schema from app.schemas when it exists, else the spec mirror above."""
+    try:
+        found = getattr(importlib.import_module("app.schemas"), name, None)
+    except ImportError:
+        found = None
+    if found is None and name in _FALLBACK_SCHEMAS:
+        return _FALLBACK_SCHEMAS[name]
+    if found is None:
+        raise LookupError(f"schema {name} is not available")
+    return found
+
+
 async def _complete(task: str, prompt: str, user: str, schema_name: str) -> Any:
     client = importlib.import_module("app.llm.client")
-    schemas = importlib.import_module("app.schemas")
-    return await client.complete_json(task, _prompt(prompt), user, getattr(schemas, schema_name))
+    return await client.complete_json(task, _prompt(prompt), user, _schema(schema_name))
 
 
 # ---------- Deterministic helpers ----------
