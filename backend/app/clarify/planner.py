@@ -1,7 +1,8 @@
 """Question planner (Problem 5): ask the fewest, most important questions.
 
 score = gap_weight + item_priority_bonus + safety_bonus
-- Within the budget, ask the top gap scoring ≥ ask_threshold.
+- Within the budget, ask the top gap scoring ≥ ask_threshold, except a non-safety
+  gap on an item that was stated clearly (`Gap.statement_clear`).
 - After the budget is spent, still ask gaps on safety slots: slots.yaml says
   safety slots are "kept even when simplifying" and block submit.
 - Everything else is reported as not asked, with a reason.
@@ -56,7 +57,7 @@ def plan(gaps: Iterable[Gap], budget_used: int, budget_max: int | None = None,
     within = budget_used < budget_max
     chosen: Gap | None = None
     for g in ranked:
-        if (within and score(g) >= threshold) or (not within and g.safety):
+        if (within and score(g) >= threshold and not g.statement_clear) or (not within and g.safety):
             chosen = g
             break
 
@@ -67,6 +68,8 @@ def plan(gaps: Iterable[Gap], budget_used: int, budget_max: int | None = None,
         s = score(g)
         if s < threshold:
             reason = f"low priority (score {s} < {threshold})"
+        elif g.statement_clear:
+            reason = "statement was clear"
         elif not within or chosen is None:
             reason = "question budget spent"
         else:
