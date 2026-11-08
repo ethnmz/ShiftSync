@@ -149,13 +149,18 @@ def create_handoff(session: Session, outgoing_id: str, incoming_id: str, actor_i
     session.add(h)
     audit(session, "handoff_created", handoff_id=h.id, actor_id=actor_id or outgoing_id)
 
-    # Carry over every open follow-up: copy its item (and current facts) into this
-    # handoff and point the follow-up at the copy. Nothing is closed or reassigned.
+    # Carry over every open follow-up from handoffs that were already submitted: copy
+    # its item (and current facts) into this handoff and point the follow-up at the
+    # copy. Nothing is closed or reassigned. A handoff still being written keeps its
+    # own follow-ups, so a second, accidental handoff can't take them away.
     carried = []
     open_fus = session.exec(select(FollowUp).where(FollowUp.status != "closed").order_by(FollowUp.id)).all()
     for fu in open_fus:
         old = session.get(Item, fu.item_id)
         if old is None or old.handoff_id == h.id:
+            continue
+        source = session.get(Handoff, old.handoff_id)
+        if source is None or source.state in (*sm.SHIFT_A_EDIT_STATES, "analyzing"):
             continue
         copy = Item(id=next_id(session, Item), handoff_id=h.id, origin_item_id=old.id, kind=old.kind,
                     title=old.title, asset_ids=list(old.asset_ids), asset_mention=old.asset_mention,
