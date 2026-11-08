@@ -3,75 +3,82 @@ import type { Certainty, Fact, FactPatch } from "../api/types";
 import { slotLabel } from "../labels";
 import { isRaise } from "../review";
 import CertaintyBadge, { CERTAINTY, ReviewChip } from "./CertaintyBadge";
+import { Button } from "./ui";
 
 const LEVELS: Certainty[] = ["confirmed", "reported", "unverified", "unknown"];
 
-// One fact: slot · value · certainty · AI chip · ✓ · ✎ (docs/UI.md Screen 1).
+// One fact: slot · value · certainty (the world) · review state (the operator)
+// · source link · ✓ check · ✎ edit. Certainty and review stay separate.
 export default function FactRow({
   fact,
   itemTitle,
   editable,
   busy,
-  showQuote = false,
+  selected = false,
+  onSelect,
   onPatch,
 }: {
   fact: Fact;
   itemTitle: string;
   editable: boolean;
   busy: boolean;
-  // Review shows the verbatim quote inline so the operator checks against it.
-  showQuote?: boolean;
-  onPatch: (patch: FactPatch) => void;
+  selected?: boolean;
+  onSelect?: () => void;
+  onPatch?: (patch: FactPatch) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const rejected = fact.review_state === "operator_rejected";
+  const label = `${itemTitle} ${slotLabel(fact.slot)}`;
 
   return (
-    <li className="flex flex-col gap-2 border-t border-line py-2 first:border-t-0">
-      <div className="flex items-start gap-2">
+    <li className={`flex flex-col gap-2 rounded-lg px-3 py-2.5 ${selected ? "bg-warn/5 ring-1 ring-warn/40" : ""}`}>
+      <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-xs uppercase tracking-wide text-muted">{slotLabel(fact.slot)}</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-medium uppercase tracking-wide text-muted">{slotLabel(fact.slot)}</span>
             <CertaintyBadge certainty={fact.certainty} />
             <ReviewChip state={fact.review_state} />
           </div>
-          <p className={`mt-0.5 font-medium leading-snug ${rejected ? "text-muted line-through" : ""}`}>{fact.value}</p>
-          {showQuote ? (
-            <blockquote className="mt-1 border-l-2 border-line pl-2 text-sm italic text-muted">“{fact.quote}”</blockquote>
-          ) : (
-            <details className="mt-0.5 text-sm text-muted">
-              <summary className="cursor-pointer select-none">❝ Source</summary>
-              <blockquote className="mt-1 border-l-2 border-line pl-2 italic">“{fact.quote}”</blockquote>
-            </details>
+          <p className={`mt-1 font-medium leading-snug ${rejected ? "text-faint line-through" : ""}`}>{fact.value}</p>
+          {fact.review_state === "operator_edited" && fact.ai_proposed_value && (
+            <p className="text-xs text-faint">AI had: “{fact.ai_proposed_value}”</p>
           )}
-        </div>
-        {editable && !editing && (
-          <div className="flex shrink-0 gap-1">
-            {fact.review_state === "ai_extracted" && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onPatch({ review_state: "operator_confirmed" })}
-                aria-label={`Mark ${itemTitle} ${slotLabel(fact.slot)} as correct`}
-                title="The AI captured this correctly. Certainty does not change."
-                className="min-h-touch min-w-touch rounded-lg border-2 border-green-600/60 text-lg font-bold text-green-500 hover:bg-green-500/10 disabled:opacity-40"
-              >
-                ✓
-              </button>
-            )}
+          {onSelect ? (
             <button
               type="button"
-              disabled={busy}
-              onClick={() => setEditing(true)}
-              aria-label={`Edit ${itemTitle} ${slotLabel(fact.slot)}`}
-              className="min-h-touch min-w-touch rounded-lg border border-line text-lg hover:border-muted disabled:opacity-40"
+              onClick={onSelect}
+              aria-pressed={selected}
+              className="mt-1 max-w-full truncate text-left text-sm italic text-muted underline decoration-line-strong underline-offset-2 hover:text-ink"
+              aria-label={`Show the source of ${label}: ${fact.quote}`}
+              title="Show this quote in the source transcript"
             >
-              ✎
+              ❝ {fact.quote}
             </button>
+          ) : (
+            <p className="mt-1 text-sm italic text-muted">❝ {fact.quote}</p>
+          )}
+        </div>
+        {editable && !editing && onPatch && (
+          <div className="flex shrink-0 gap-1.5">
+            {fact.review_state === "ai_extracted" && (
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => onPatch({ review_state: "operator_confirmed" })}
+                aria-label={`Check ${label}: recorded correctly`}
+                title="The AI recorded this correctly. Certainty does not change."
+                className="border-ok/50 text-ok"
+              >
+                ✓ Correct
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => setEditing(true)} aria-label={`Edit ${label}`}>
+              ✎
+            </Button>
           </div>
         )}
       </div>
-      {editing && (
+      {editing && onPatch && (
         <FactEditor
           fact={fact}
           busy={busy}
@@ -86,17 +93,7 @@ export default function FactRow({
   );
 }
 
-function FactEditor({
-  fact,
-  busy,
-  onCancel,
-  onSave,
-}: {
-  fact: Fact;
-  busy: boolean;
-  onCancel: () => void;
-  onSave: (patch: FactPatch) => void;
-}) {
+function FactEditor({ fact, busy, onCancel, onSave }: { fact: Fact; busy: boolean; onCancel: () => void; onSave: (patch: FactPatch) => void }) {
   const [value, setValue] = useState(fact.value);
   const [certainty, setCertainty] = useState<Certainty>(fact.certainty);
   const [statement, setStatement] = useState("");
@@ -113,33 +110,30 @@ function FactEditor({
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-panel p-3">
+    <div
+      className="flex flex-col gap-3 rounded-lg border border-line bg-subtle p-3"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onCancel();
+        }
+      }}
+    >
       <label className="flex flex-col gap-1 text-sm">
-        <span className="text-muted">Value</span>
-        <input
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className="min-h-touch rounded-lg border border-line bg-bg px-3 text-base"
-        />
+        <span className="font-medium">Value</span>
+        <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} className="min-h-touch rounded-lg border border-line-strong bg-surface px-3 text-base" />
       </label>
       <fieldset className="flex flex-col gap-1 text-sm">
-        <legend className="mb-1 text-muted">Certainty</legend>
-        <div className="flex flex-wrap gap-2">
+        <legend className="mb-1 font-medium">Certainty</legend>
+        <div className="flex flex-wrap gap-1.5">
           {LEVELS.map((c) => (
             <label
               key={c}
-              className={`flex min-h-touch cursor-pointer items-center gap-1 rounded-lg border px-3 ${
-                certainty === c ? "border-accent bg-accent/10" : "border-line"
+              className={`flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-md border px-3 focus-within:outline focus-within:outline-2 focus-within:outline-accent ${
+                certainty === c ? "border-accent bg-accent/10" : "border-line-strong bg-surface"
               }`}
             >
-              <input
-                type="radio"
-                name={`cert-${fact.id}`}
-                aria-label={CERTAINTY[c].label}
-                className="sr-only"
-                checked={certainty === c}
-                onChange={() => setCertainty(c)}
-              />
+              <input type="radio" name={`cert-${fact.id}`} aria-label={CERTAINTY[c].label} className="sr-only" checked={certainty === c} onChange={() => setCertainty(c)} />
               <span aria-hidden>{CERTAINTY[c].icon}</span> {CERTAINTY[c].label}
             </label>
           ))}
@@ -147,38 +141,21 @@ function FactEditor({
       </fieldset>
       {raising && (
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-amber-500">
-            Raising certainty needs your own statement. What did you confirm, and how?
-          </span>
-          <textarea
-            rows={2}
-            value={statement}
-            onChange={(e) => setStatement(e.target.value)}
-            className="rounded-lg border border-line bg-bg p-2 text-base"
-          />
+          <span className="text-warn">Raising certainty needs your own statement. What did you confirm, and how?</span>
+          <textarea rows={2} value={statement} onChange={(e) => setStatement(e.target.value)} className="rounded-lg border border-line-strong bg-surface p-2 text-base" />
         </label>
       )}
       <div className="flex flex-wrap justify-between gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onSave({ review_state: "operator_rejected" })}
-          className="min-h-touch rounded-lg px-3 text-sm font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-40"
-        >
+        <Button variant="danger" size="sm" disabled={busy} onClick={() => onSave({ review_state: "operator_rejected" })}>
           Remove: AI got it wrong
-        </button>
+        </Button>
         <div className="flex gap-2">
-          <button type="button" onClick={onCancel} className="min-h-touch rounded-lg border border-line px-4 text-sm">
+          <Button size="sm" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            type="button"
-            disabled={busy || !canSave}
-            onClick={save}
-            className="min-h-touch rounded-lg bg-accent px-4 text-sm font-semibold text-white disabled:opacity-40"
-          >
+          </Button>
+          <Button size="sm" variant="primary" disabled={busy || !canSave} onClick={save}>
             Save
-          </button>
+          </Button>
         </div>
       </div>
     </div>
