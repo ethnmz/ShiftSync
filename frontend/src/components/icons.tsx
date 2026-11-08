@@ -1,4 +1,4 @@
-import { ChartNoAxesColumn, CircleCheck, CircleHelp, CirclePlus, Clock, Flag, House, Inbox, List, Users } from "lucide-react";
+import { ChartNoAxesColumn, CircleCheck, CircleHelp, CirclePlus, Clapperboard, Clock, Flag, House, Inbox, List, Users } from "lucide-react";
 
 // Line icons from lucide-react (the Harbor reference uses the same set).
 // The old names are kept so screens don't change. Decorative: the label
@@ -15,6 +15,7 @@ export const ListIcon = () => <List {...props} />;
 export const CheckCircleIcon = () => <CircleCheck {...props} />;
 export const FlagIcon = () => <Flag {...props} />;
 export const HelpIcon = () => <CircleHelp {...props} />;
+export const DemoIcon = () => <Clapperboard {...props} />;
 
 // ShiftSync mark: two opposing arrows (one shift hands over, the other takes
 // over) on an ink tile. Used in place of the wordmark.

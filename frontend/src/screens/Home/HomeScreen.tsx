@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { errorMessage, listFollowups, listHandoffs } from "../../api/client";
-import type { HandoffState, HandoffSummary } from "../../api/types";
+import { submittedAt, type HandoffState, type HandoffSummary } from "../../api/types";
 import { CheckCircleIcon, FlagIcon, HelpIcon, InboxIcon, ListIcon } from "../../components/icons";
 import { DashCard, Notice, Skeleton } from "../../components/ui";
 import { formatClock, formatWhen } from "../../labels";
@@ -217,7 +217,7 @@ export default function HomeScreen() {
                           </p>
                           <p className="mt-0.5 text-sm text-muted">
                             {STATE_LABEL[h.state]}
-                            {h.status_line?.submitted_at ? ` · Submitted ${formatClock(h.status_line.submitted_at)}` : ""}
+                            {submittedAt(h) ? ` · Submitted ${formatClock(submittedAt(h))}` : ""}
                           </p>
                         </div>
                         <ActionLink to={editable ? `/create/${h.id}/${STEP_OF[h.state]?.path ?? "record"}` : `/receive/${h.id}`}>View</ActionLink>

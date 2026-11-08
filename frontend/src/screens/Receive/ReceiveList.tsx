@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { FIXTURE_MODE, errorMessage, listHandoffs, loadOfflineDemo } from "../../api/client";
-import type { HandoffSummary } from "../../api/types";
+import { submittedAt, type HandoffSummary } from "../../api/types";
 import { PageHeader } from "../../components/AppShell";
 import { Button, Card, Chip, Notice, Panel, Skeleton } from "../../components/ui";
 import { formatClock } from "../../labels";
@@ -68,7 +68,7 @@ export default function ReceiveList() {
                       </span>
                     )}
                     <Chip tone="accent">{h.state.replace(/_/g, " ")}</Chip>
-                    {h.status_line?.submitted_at && <span className="text-sm text-muted">Submitted {formatClock(h.status_line.submitted_at)}</span>}
+                    {submittedAt(h) && <span className="text-sm text-muted">Submitted {formatClock(submittedAt(h))}</span>}
                     <span aria-hidden className="ml-auto text-muted">
                       →
                     </span>

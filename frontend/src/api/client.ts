@@ -1,6 +1,8 @@
 import type {
   Blocker,
   Briefing,
+  DemoScenario,
+  DemoStep,
   FactPatch,
   FollowUp,
   Handoff,
@@ -208,8 +210,31 @@ export function closeFollowup(id: string, text: string): Promise<unknown> {
   return request(`/followups/${id}/close`, json({ text }));
 }
 
+// 422 analysis_failed: the statement was saved, but the model step didn't
+// run (docs/API.md). Resending would store it twice.
+export const isAnalysisFailed = (e: unknown) => e instanceof ApiError && e.code === "analysis_failed";
+// 422 transcription_failed: the audio was saved but couldn't be transcribed.
+export const isTranscriptionFailed = (e: unknown) => e instanceof ApiError && e.code === "transcription_failed";
+
 export function errorMessage(e: unknown, fallback: string) {
   return e instanceof ApiError && e.status !== 409 ? e.message : fallback;
+}
+
+// ---- Demo control (live mode only) ---------------------------------------
+// Replays demo/scenario.json through the real backend (docs/API.md). Each step
+// acts as the scenario's actor, so no X-User is needed. offline=true uses the
+// backend's fixed AI outputs; false calls the configured model.
+
+export function demoReset(): Promise<{ ok: boolean; now: string }> {
+  return request("/demo/reset", { method: "POST" });
+}
+
+export function demoScenario(): Promise<DemoScenario> {
+  return request("/demo/scenario");
+}
+
+export function demoStep(n: number, offline = true): Promise<DemoStep> {
+  return request(`/demo/step/${n}?offline=${offline}`, { method: "POST" });
 }
 
 // Offline demo only: replays demo/scenario.json steps 1-6 so Receive has a

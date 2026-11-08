@@ -163,7 +163,7 @@ export function ClarifyPanel({
 }: {
   handoff: HandoffDetail;
   sending: boolean;
-  error: string | null;
+  error: { title: string; text: string } | null;
   onAnswer: (questionId: string, input: AnswerInput) => void;
   onContinue: () => void;
 }) {
@@ -225,8 +225,8 @@ export function ClarifyPanel({
         </AskBubble>
       )}
       {error && (
-        <Notice tone="danger" role="alert" title="The answer wasn't saved">
-          {error}
+        <Notice tone="danger" role="alert" title={error.title}>
+          {error.text}
         </Notice>
       )}
       <div ref={endRef} />

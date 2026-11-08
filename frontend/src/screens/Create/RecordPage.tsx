@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FIXTURE_MODE, createHandoff, errorMessage, postStatement, type StatementInput } from "../../api/client";
+import { FIXTURE_MODE, createHandoff, errorMessage, isAnalysisFailed, isTranscriptionFailed, postStatement, type StatementInput } from "../../api/client";
 import type { Certainty, HandoffDetail } from "../../api/types";
 import AudioBubble from "../../components/AudioBubble";
 import CertaintyBadge from "../../components/CertaintyBadge";
@@ -34,6 +34,15 @@ function Reply({ handoff, onContinue }: { handoff: HandoffDetail; onContinue: ()
   const pending = handoff.questions.filter((q) => q.status === "pending").length;
   const order = { critical: 0, important: 1, routine: 2 } as const;
   const items = [...handoff.items].sort((a, b) => order[a.priority] - order[b.priority]);
+  // No items means nothing was extracted (e.g. analysis failed). Never read
+  // that as "nothing is missing".
+  if (items.length === 0)
+    return (
+      <div className="max-w-[88%] self-start rounded-2xl border border-line bg-surface p-5">
+        <AiByline kind="murmur" className="mb-3" />
+        <p className="leading-relaxed">I haven't pulled any items out of this note yet. The note is saved as you said it.</p>
+      </div>
+    );
   return (
     <div className="max-w-[88%] self-start rounded-2xl border border-line bg-surface p-5">
       <AiByline kind="murmur" className="mb-3" />
@@ -75,13 +84,25 @@ export default function RecordPage() {
   const [mode, setMode] = useState<Mode>("record");
   const [text, setText] = useState("");
   const lastInput = useRef<StatementInput | null>(null); // memory only, for one retry
+  // The handoff created by the first send, so a retry or an error reuses it
+  // instead of starting a second handoff.
+  const createdId = useRef<string | null>(null);
 
   const send = useMutation({
     mutationFn: async (input: StatementInput) => {
       lastInput.current = input;
       flow.start();
-      const hid = id ?? (await createHandoff(user.id, DEMO_INCOMING_ID)).id;
+      const hid = id ?? createdId.current ?? (await createHandoff(user.id, DEMO_INCOMING_ID)).id;
+      createdId.current = hid;
       return postStatement(hid, input);
+    },
+    onError: (e) => {
+      const hid = id ?? createdId.current;
+      if (!hid) return;
+      // analysis_failed keeps the statement: show it, and don't offer a resend.
+      if (isAnalysisFailed(e)) lastInput.current = null;
+      void qc.invalidateQueries({ queryKey: ["handoff", hid] });
+      if (!id) navigate(`/create/${hid}/record`, { replace: true });
     },
     onSuccess: (d) => {
       const before = new Set(handoff?.statements.map((s) => s.id) ?? []);
@@ -189,8 +210,15 @@ export default function RecordPage() {
 
           {send.isError && (
             <div role="alert" className="max-w-[88%] self-start rounded-2xl border border-danger/40 bg-danger/5 p-4 text-sm">
-              <p className="font-semibold text-danger">The note wasn't sent</p>
+              <p className="font-semibold text-danger">
+                {isAnalysisFailed(send.error)
+                  ? "Your note is saved, but ShiftSync couldn't analyze it"
+                  : isTranscriptionFailed(send.error)
+                    ? "The recording is saved, but it couldn't be transcribed"
+                    : "The note wasn't sent"}
+              </p>
               <p className="mt-1">{errorMessage(send.error, "Something went wrong. Try again, or type it instead.")}</p>
+              {isAnalysisFailed(send.error) && <p className="mt-1 text-muted">Nothing was extracted, so nothing is marked as checked or complete.</p>}
               <div className="mt-3 flex gap-2">
                 {lastInput.current && (
                   <Button size="sm" onClick={() => lastInput.current && send.mutate(lastInput.current)}>

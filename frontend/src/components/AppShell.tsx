@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { FIXTURE_MODE } from "../api/client";
 import { DEMO_USERS, useUser } from "../session/user";
 import AmbientGlow from "./ambient";
-import { ChartIcon, ClockIcon, HomeIcon, InboxIcon, Logo, PeopleIcon, PlusCircleIcon } from "./icons";
+import { ChartIcon, ClockIcon, DemoIcon, HomeIcon, InboxIcon, Logo, PeopleIcon, PlusCircleIcon } from "./icons";
 
 // Built screens only. History, Supervisor and Evaluation are P1 in
 // docs/PRODUCT.md and are shown as not built rather than linked.
@@ -10,6 +11,8 @@ const HANDOFFS = [
   { to: "/", label: "Home", icon: <HomeIcon />, end: true },
   { to: "/create", label: "New", title: "New handoff", icon: <PlusCircleIcon /> },
   { to: "/receive", label: "Receive", icon: <InboxIcon /> },
+  // Presenter control for the backend's scripted replay; live mode only.
+  ...(FIXTURE_MODE ? [] : [{ to: "/demo", label: "Demo", title: "Demo control", icon: <DemoIcon /> }]),
 ];
 const LATER = [
   { label: "History", icon: <ClockIcon /> },
@@ -20,6 +23,7 @@ const LATER = [
 function sectionOf(path: string) {
   if (path.startsWith("/create")) return "New handoff";
   if (path.startsWith("/receive")) return "Receive";
+  if (path.startsWith("/demo")) return "Demo control";
   if (path === "/") return "Home";
   return "ShiftSync";
 }
