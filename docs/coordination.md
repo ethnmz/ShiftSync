@@ -33,7 +33,7 @@ If that pin command is unavailable on an older `gh`, open https://github.com/eth
 1. Merge is Ethan's call. Until then, check out `cursor/shiftsync-team-setup-7a71` rather than expecting these files on `main`.
 2. `gh auth login` with that person's own GitHub account.
 3. `tools/board whoami` from the repo root. It must print that person's login.
-4. Replace `GITHUB_LOGIN_DIEGO`, `GITHUB_LOGIN_ADITRI`, and `GITHUB_LOGIN_AKSHI` in `AGENTS.md` and `README.md` when the real logins are known. Provenance: only `ethnmz` is verified, as the owner of this repository. The other three names have no login anywhere in the template or this repo. Do not derive one from a name.
+4. The logins in `AGENTS.md` are the ones supplied for this setup: `ethnmz`, `Navibytes`, `biswalakshi`, `aditrit06`. `tools/board whoami` should print the login of the account that ran `gh auth login`.
 5. Claude Code users open this project in Claude Code. Codex and other agents run the manual commands below.
 
 `tools/board whoami` was not verified here. This environment's GitHub integration returns HTTP 403 for `gh api user`, which is how the script looks up the login. That failure does not configure a laptop.

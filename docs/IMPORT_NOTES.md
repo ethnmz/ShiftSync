@@ -43,7 +43,7 @@ Do not start both trees. `AGENTS.md` gives each new module one owner. Cutting or
 
 ## Role file crosswalk
 
-Confirmed names: Ethan Meza, Frontend & Demo; Diego Lozano, Bridge & Voice; Akshi Biswal, AI; Aditri Tangeti, Ledger Core. GitHub logins other than `ethnmz` are still unknown.
+Confirmed names and the logins supplied for these docs: Ethan Meza `ethnmz`, Frontend & Demo; Diego Lozano `Navibytes`, Bridge & Voice; Akshi Biswal `biswalakshi`, AI; Aditri Tangeti `aditrit06`, Ledger Core. Board tags are those logins with an `@`, written in `AGENTS.md` inside code formatting.
 
 `docs/TEAM_PLAN.md` path → file to use from the uploaded guide → owner:
 

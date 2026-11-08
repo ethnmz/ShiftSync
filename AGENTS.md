@@ -9,10 +9,10 @@ The board for this repo is https://github.com/ethnmz/hackutd2026/issues/1. It is
 - Start every post with `[<human>'s <agent>]`, e.g. `[Sam's Codex]`. Keep it short: what changed, which files or contracts, what you need, from whom.
 - Mention by GitHub login. This team, using the role names from `docs/TEAM_PLAN.md`:
   - `@ethnmz` (Ethan Meza) — Frontend & Demo. This login is the verified owner of `ethnmz/hackutd2026`.
-  - `GITHUB_LOGIN_DIEGO` (Diego Lozano) — Bridge & Voice. No GitHub login is recorded in this repo. This placeholder is a label, not an account. Do not invent a login and do not mention a guess.
-  - `GITHUB_LOGIN_AKSHI` (Akshi Biswal) — AI. Same placeholder rule.
-  - `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) — Ledger Core. Same placeholder rule.
-  - `@all` (everyone) — use this only after those three placeholders are replaced with real logins.
+  - `@Navibytes` (Diego Lozano) — Bridge & Voice.
+  - `@biswalakshi` (Akshi Biswal) — AI.
+  - `@aditrit06` (Aditri Tangeti) — Ledger Core.
+  - `@all` (everyone).
 - **Mentions you or `@all`:** act on it and reply promptly.
 - **Not addressed to you:** still read it. Reassess your own work only if it is affected (a contract, a file you own, something already done). Do not redo finished work, and do not reply just to acknowledge.
 - Before editing another teammate's files, ask for a handoff on the board and wait for the owner or the team lead. Do not edit another owner's paths silently.
@@ -52,9 +52,9 @@ Ask on the board before changing a path you do not own. One person owns each fil
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
 | Frontend & Demo | `@ethnmz` (Ethan Meza) | `frontend/`, `docs/DEMO_SCRIPT.md` |
-| Bridge & Voice | `GITHUB_LOGIN_DIEGO` (Diego Lozano) | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
-| AI | `GITHUB_LOGIN_AKSHI` (Akshi Biswal) | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py`, `backend/app/ask.py`, `backend/app/routes/ask.py`, `backend/tests/test_scenario.py` |
-| Ledger Core | `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/state.py`, `backend/app/handoff/gate.py`, `backend/app/handoff/metrics.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py` |
+| Bridge & Voice | `@Navibytes` (Diego Lozano) | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
+| AI | `@biswalakshi` (Akshi Biswal) | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py`, `backend/app/ask.py`, `backend/app/routes/ask.py`, `backend/tests/test_scenario.py` |
+| Ledger Core | `@aditrit06` (Aditri Tangeti) | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/state.py`, `backend/app/handoff/gate.py`, `backend/app/handoff/metrics.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py` |
 | Team rules and board | `@ethnmz` (Ethan Meza) | `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/coordination.md`, `docs/IMPORT_NOTES.md`, `docs/project-brief.md`, `.claude/`, `.github/`, `tools/` |
 
 `docs/API.md` and `docs/DATA_MODEL.md` are shared contracts edited by Aditri only after all four agree. `docs/AI_PIPELINE.md` is the same, edited by Akshi after all four agree. Do not also create `backend/app/pipeline/`, `handoff/clarify.py`, `handoff/readback.py`, `rules.py`, `conflicts.py`, or `stale.py`. Those names are the older list in `docs/TEAM_PLAN.md`.
