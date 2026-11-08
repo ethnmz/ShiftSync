@@ -1,6 +1,7 @@
 """Speech-to-text backends, chosen by STT_PROVIDER. Each takes a 16 kHz mono WAV and returns raw text."""
 
 import os
+import wave
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
@@ -36,10 +37,25 @@ def _local_model(name: str):
     return WhisperModel(name, device="auto", compute_type="auto")
 
 
+def read_wav16k(wav: Path):
+    """Samples of our own 16 kHz mono 16-bit WAV as float32 in [-1, 1].
+
+    Passing samples instead of a path keeps faster-whisper from decoding the file
+    with PyAV, whose newer releases reject the arguments faster-whisper 1.2 sends.
+    """
+    import numpy as np
+
+    with wave.open(str(wav), "rb") as w:
+        if (w.getframerate(), w.getnchannels(), w.getsampwidth()) != (16000, 1, 2):
+            raise STTError("The converted recording has an unexpected format.")
+        frames = w.readframes(w.getnframes())
+    return np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32768.0
+
+
 def transcribe_local(wav: Path, prompt: str) -> str:
     model = _local_model(os.environ.get("LOCAL_WHISPER_MODEL") or "small.en")
     # vad_filter skips silence, where Whisper is most likely to produce text nobody said.
-    segments, _info = model.transcribe(str(wav), language=LANGUAGE, initial_prompt=prompt, vad_filter=True)
+    segments, _info = model.transcribe(read_wav16k(wav), language=LANGUAGE, initial_prompt=prompt, vad_filter=True)
     return " ".join(seg.text.strip() for seg in segments)
 
 

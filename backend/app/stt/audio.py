@@ -16,7 +16,7 @@ def to_wav16k(src: Path, out_dir: Path) -> Path:
         raise STTError("ffmpeg is not installed on the server.")
 
     out = out_dir / "audio16k.wav"
-    cmd = [ffmpeg, "-y", "-loglevel", "error", "-i", str(src), "-ac", "1", "-ar", "16000", str(out)]
+    cmd = [ffmpeg, "-y", "-loglevel", "error", "-i", str(src), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out)]
     try:
         proc = subprocess.run(cmd, capture_output=True, timeout=FFMPEG_TIMEOUT_S, check=False)
     except subprocess.TimeoutExpired as exc:

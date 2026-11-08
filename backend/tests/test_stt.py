@@ -158,6 +158,33 @@ def test_openai_call_passes_model_prompt_and_language(monkeypatch, tmp_path):
     assert sent["language"] == "en"
 
 
+# ---- local provider ----
+
+def write_wav(path: Path, samples: list[int], rate: int = 16000, channels: int = 1) -> Path:
+    import struct
+    import wave
+
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(channels)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(struct.pack(f"<{len(samples)}h", *samples))
+    return path
+
+
+def test_read_wav16k_scales_samples(tmp_path):
+    pytest.importorskip("numpy")
+    samples = providers.read_wav16k(write_wav(tmp_path / "a.wav", [0, 16384, -32768]))
+    assert samples.dtype.name == "float32"
+    assert samples.tolist() == [0.0, 0.5, -1.0]
+
+
+def test_read_wav16k_rejects_other_formats(tmp_path):
+    pytest.importorskip("numpy")
+    with pytest.raises(STTError, match="unexpected format"):
+        providers.read_wav16k(write_wav(tmp_path / "a.wav", [0, 0], rate=44100))
+
+
 # ---- vocabulary hint ----
 
 def test_hint_has_fixed_terms_and_assets():
