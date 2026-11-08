@@ -1,1 +1,3 @@
 .board/
+.env
+backend/data/

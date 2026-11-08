@@ -1,40 +1,45 @@
-# Evaluation plan
+# Evaluation
 
-This file is a new plan written for this spec. It is not an uploaded original, and it contains no results.
-
-The point is to compare three ways of handing the same synthetic note, on purpose-built scenarios, after someone runs them. A higher number is not a claim that ShiftSync is safer, and it is not proof that a person understood.
+We test ShiftSync on **predetermined fictional handoff scenarios** and compare it with **a normal handoff** and **a basic AI-generated summary**. **We never invent or claim improvements we haven't measured.** Every number on the Evaluation screen comes from `backend/data/eval_results.json` produced by `python -m app.eval.run`.
 
 ## Conditions
+1. **Normal handoff**: the outgoing operator's original statement(s), unchanged.
+2. **Basic AI summary**: one call, same model: "Summarize this shift handoff for the incoming operator."
+3. **ShiftSync**: full pipeline. Clarification questions are answered **only** from the scenario's `outgoing_operator_knowledge` by a simulated outgoing operator (answers "I don't know" when the knowledge says so). Review accepts facts unless they contradict ground truth (counted as an AI error caught by review).
 
-Use the same scenario for each:
-
-1. **Raw note.** The incoming person sees only the transcript.
-2. **Plain summary.** One model summary of that transcript, with no interview and no status labels.
-3. **ShiftSync.** The interview, the fact statuses, and the understanding check defined in `docs/PRODUCT.md`.
-
-## Metrics
-
-Score each condition against ground truth written in the scenario file. Ground truth is authored with the scenario. It is not produced by the model under test.
-
-| Metric | What to count |
+## Metrics (from the requirements)
+| Metric | How we measure it |
 |---|---|
-| Completeness | Critical slots that appear as `confirmed` or as an explicit `unknown`. A missing slot scores 0. A hedge stored as `confirmed` scores 0. |
-| Interpretation | Ground-truth meanings the incoming answer preserves. "Maintenance is done" against "vendor still has to verify" scores 0 for that fact. |
-| Action clarity | Unknowns that name a human owner and a due time. UNASSIGNED scores 0. An owner the model invented scores 0. |
-| Efficiency | `1 - (questions asked / budget)` for the outgoing interview, plus the count of correction turns. Fewer questions score higher only when completeness did not fall. |
+| **Critical facts correctly transferred** | % of ground-truth critical facts present in the artifact Shift B reads **with the correct certainty** (an unverified claim shown as fact counts as wrong). LLM judge + quote check, spot-checked by a human. |
+| **Missing details detected** | ShiftSync only: % of ground-truth `missing_in_notes` items that produced a clarification question or a visible "unknown / to be assigned". |
+| **Ambiguous statements clarified** | % of ground-truth `ambiguous_phrases` that end up resolved (confirmed answer) or explicitly marked unverified/unknown. Baselines get 0 for silently passing them through. |
+| **Misunderstandings caught** | A simulated incoming operator primed with `likely_misreadings` answers the comprehension questions from each artifact. Normal/summary: counted as caught only if the artifact itself prevents it (graded answer is correct). ShiftSync: the verification loop catches it (first attempt vs final). |
+| **Unknown conditions correctly preserved** | % of ground-truth unknown/unverified facts shown as unknown/unverified (never as complete/confirmed). |
+| **Incorrect facts introduced by AI** | Count of statements in the artifact that contradict ground truth or aren't supported by any source statement (hallucinated owners, deadlines, completion, clearance). For ShiftSync count both pre-review (AI) and post-review. |
+| **Time required** | Live runs: Shift A seconds (statement → submit) and Shift B seconds (open → verified). Simulated runs: words spoken/read as a proxy; label it a proxy. |
+| **Clarification questions asked** | Count (and how many were "not asked" by design). |
 
-Each metric is a fraction from 0 to 1. Report the four numbers per condition. Do not collapse them into a single "safety" score. Do not fill this table until a run exists.
+## Scenarios (`eval/scenarios/*.json`)
+| File | Focus |
+|---|---|
+| `vague_ups.json` | Problem 1: vague "should be fine", "it's handled" |
+| `lost_reasoning_chiller.json` | Problem 3: decision without rationale or restore condition |
+| `unresolved_owner.json` | Problem 4: "I think they finished", "someone should probably check" |
+| `low_effort_complete.json` | Problem 5: an already-complete handoff; ShiftSync should ask ≤ 1 question |
 
-## Scenarios
+Each has: `notes`, `outgoing_operator_knowledge`, `ground_truth_facts` (slot, value, certainty, critical), `missing_in_notes`, `ambiguous_phrases`, `comprehension_questions` (+ must_convey / must_not_claim), `likely_misreadings`.
 
-`eval/scenarios/` is not in the repo. When it is added, start with three synthetic notes:
+## Simulated incoming operator (`eval_reader.md`)
+```
+You are an incoming data center operator starting a shift: busy and reading quickly. Read ONLY the
+HANDOFF and answer each question in 1–2 sentences. If the handoff is vague, answer with the most
+natural interpretation a busy person would make. Only say something is unknown if the handoff
+explicitly says so.
+```
 
-- the hedged UPS vendor line from `docs/DEMO_SCRIPT.md`
-- a note that names a condition and a restore step
-- a note that says "I don't know" and never names an owner
-
-Each file needs the transcript, the critical slots, and the ground-truth status. No live phone numbers.
-
-## What a run must not say
-
-Do not write "we reduced errors" or "the model understood." The allowed sentence is: on this synthetic set, condition C scored these four fractions. `backend/tests/test_scenario.py` can assert the gate and the hedge downgrade without being this benchmark.
+## Honesty rules
+- Same model, temperature 0, same reader prompt for all conditions; 3 runs per scenario; report the mean and min–max.
+- Simulated operators are a proxy for real people. Say so on the screen and in the pitch.
+- Tune prompts on `demo/`, never on `eval/` wording.
+- Show effort next to quality. If ShiftSync takes longer than a normal handoff, show it.
+- If a metric looks worse for ShiftSync, show it anyway and explain.

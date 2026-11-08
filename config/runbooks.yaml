@@ -1,0 +1,33 @@
+# Suggested contingencies, used when the memo didn't state one.
+# Lookup order: (kind, asset_id) → (kind, asset_type) → (kind, "*").
+# Shown in the UI with a "suggested" label.
+
+contingencies:
+  - kind: bypass
+    asset_id: CHL-2
+    if: "Hall B cold aisle exceeds 27 °C or CHL-1 alarms"
+    then: "Start portable cooling unit PC-2, page facilities engineer on call, prepare to migrate low-priority workloads out of Hall B."
+  - kind: bypass
+    asset_type: valve
+    if: "Loop pressure drops or hall temperature rises > 2 °C in 30 min"
+    then: "Physically inspect the valve, confirm position with facilities engineer before restoring to auto."
+  - kind: bypass
+    asset_type: chiller
+    if: "Hall temperature exceeds 27 °C"
+    then: "Start portable cooling, page facilities on-call."
+  - kind: lockout_tagout
+    asset_type: "*"
+    if: "Anyone requests to energize, test or work downstream of the locked-out equipment"
+    then: "Do NOT proceed. Only the tag holder may remove the tag. Confirm with the shift lead and the vendor before any activity."
+  - kind: vendor_work
+    asset_type: ups
+    if: "Vendor returns or UPS alarms while work is paused"
+    then: "Shift lead meets vendor on site; verify lockout status together before work resumes; keep UPS in maintenance bypass."
+  - kind: directive
+    asset_type: "*"
+    if: "A task conflicts with the directive"
+    then: "Pause the task and get explicit approval from the lead who issued the directive."
+  - kind: alarm
+    asset_type: "*"
+    if: "Alarm repeats or escalates"
+    then: "Follow the equipment SOP and page on-call for the asset owner."

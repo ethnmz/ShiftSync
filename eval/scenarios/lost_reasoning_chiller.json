@@ -1,0 +1,78 @@
+{
+  "id": "lost_reasoning_chiller",
+  "notes": "CRAC 3 is in manual at 60 percent, don't put it back to auto. Hall B temps are fine. Generator 2 weekly run done.",
+  "ground_truth_facts": [
+    {
+      "item": "CRAC-3 bypass",
+      "slot": "current_mode",
+      "value": "manual at 60%",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "CRAC-3 bypass",
+      "slot": "rationale",
+      "value": "auto oscillates; return-air sensor reads 4 \u00b0C low after swap",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "CRAC-3 bypass",
+      "slot": "restore_condition",
+      "value": "controls tech recalibrates sensor (Tuesday)",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "CRAC-3 bypass",
+      "slot": "contingency",
+      "value": "if cold aisle > 26 \u00b0C raise manual to 75%; do not switch to auto",
+      "critical": true,
+      "certainty": "confirmed"
+    },
+    {
+      "item": "GEN-2 maintenance",
+      "slot": "work_status",
+      "value": "complete",
+      "critical": false,
+      "certainty": "confirmed"
+    }
+  ],
+  "comprehension_questions": [
+    {
+      "q": "Why is CRAC 3 in manual, and what has to happen before it goes back to auto?",
+      "must_not_claim": [],
+      "must_convey": [
+        "sensor reading low after swap / auto oscillates",
+        "recalibration by controls tech"
+      ]
+    },
+    {
+      "q": "If Hall B starts getting warm, what should you do with CRAC 3?",
+      "must_not_claim": [
+        "switch CRAC 3 to auto"
+      ],
+      "must_convey": [
+        "raise manual to 75% above 26 \u00b0C",
+        "do not switch to auto"
+      ]
+    }
+  ],
+  "likely_misreadings": [
+    "if it gets warm, put CRAC 3 back in auto",
+    "manual is temporary for no particular reason"
+  ],
+  "outgoing_operator_knowledge": {
+    "CRAC-3": "Its auto mode hunts and oscillates because the return-air sensor is reading 4 degrees low after the sensor swap. Manual at 60% holds Hall B steady. Return to auto only after controls tech recalibrates the sensor (ticket open, Tuesday). If Hall B cold aisle exceeds 26 \u00b0C, raise manual to 75%, don't switch to auto.",
+    "GEN-2": "Weekly no-load run completed, normal."
+  },
+  "problem": "3 Lost reasoning: the 'why' and the exit condition behind a decision are missing",
+  "missing_in_notes": [
+    "why CRAC 3 is in manual",
+    "restore condition",
+    "contingency if hot"
+  ],
+  "ambiguous_phrases": [
+    "don't put it back to auto"
+  ]
+}

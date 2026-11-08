@@ -1,23 +1,11 @@
-# What is and is not in the repo
+# Import notes
 
-The live spec is `CLAUDE.md` and `docs/PRODUCT.md`. They describe the same product: an outgoing interview and an incoming understanding check. The earlier ledger draft (I-PASS lanes, tap acknowledgments, a conflict engine) is not a second build target. It remains in git history on the merged setup commit `73709cd` if you need the old wording.
+The live spec is the final pack now in this repo: `CLAUDE.md` and `docs/PRODUCT.md` through `docs/PHOTON_BRIDGE.md`, plus `config/`, `demo/scenario.json`, and `eval/scenarios/`. The earlier interview-and-signoff writeup is retired. It remains in git history before this change. Do not build both.
 
-## Not built
+`docs/CONTRACT_MIGRATION.md` is the list of behavior changes versus the in-person nine-item agreement. Those items are not re-approved by being copied here.
 
-These names appear in the guide and are implementation tasks. They are not empty files pretending to run:
+`.env.example` has empty keys and empty model ids. `config/roster.yaml` uses fictional `+1555` numbers. Do not commit real phones or secrets.
 
-- `config/slots.yaml`, `config/rules.yaml`, `config/assets.yaml`, `config/runbooks.yaml`, `config/roster.yaml`
-- `demo/scenario.json`
-- `eval/scenarios/`
-- `.env.example` and any real secrets
-- `backend/`, `frontend/`, `photon-bridge/`
+Commands in `CLAUDE.md` fail until the app exists. `docs/EVALUATION.md` describes metrics and contains no measured results.
 
-Commands in `CLAUDE.md` such as `uvicorn` and `pytest` fail until that code exists. `docs/EVALUATION.md` is a plan with no measured numbers.
-
-## Limits that stay in force
-
-- Do not put a model slug in the spec. The provider switch is `claude` or `nemotron`. The id comes from the environment when someone builds.
-- Do not state that Photon or Nvidia eligibility is confirmed.
-- The submitted demo is at most 2 minutes. `docs/DEMO_SCRIPT.md` keeps a longer rehearsal in a separate section.
-- Signoff, grades, and metrics do not authorize physical work and do not prove understanding.
-- Shared API, data-model, and prompt-schema changes need all four people. This alignment was authorized as a proposed spec by Ethan. It is not their approval.
+Ownership is `AGENTS.md`, not the role table that came inside the pack.

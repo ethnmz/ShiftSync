@@ -1,8 +1,8 @@
 # ShiftSync
 
-HackUTD 2026 team repo: https://github.com/ethnmz/hackutd2026. Scope is [docs/PRODUCT.md](docs/PRODUCT.md). The project guide is [CLAUDE.md](CLAUDE.md). The pack's team plan is [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md). Import limits are [docs/IMPORT_NOTES.md](docs/IMPORT_NOTES.md).
+HackUTD 2026 team repo: https://github.com/ethnmz/hackutd2026. Scope is [docs/PRODUCT.md](docs/PRODUCT.md). The project guide is [CLAUDE.md](CLAUDE.md). Who owns which path is [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md). Contract differences from the in-person notes are [docs/CONTRACT_MIGRATION.md](docs/CONTRACT_MIGRATION.md).
 
-Agents coordinate on [Message Board #1](https://github.com/ethnmz/hackutd2026/issues/1). That issue exists and is not pinned yet. Collaboration rules are [AGENTS.md](AGENTS.md). Local `gh` setup is [docs/coordination.md](docs/coordination.md).
+Agents coordinate on [Message Board #1](https://github.com/ethnmz/hackutd2026/issues/1). That issue exists and is not pinned yet. Collaboration rules are [AGENTS.md](AGENTS.md). Local `gh` setup is [docs/coordination.md](docs/coordination.md). Each person's AI guide is in [docs/onboarding/README.md](docs/onboarding/README.md).
 
 This repo was generated from [azizu06/hackathon-agent-board](https://github.com/azizu06/hackathon-agent-board). The template walkthrough is [marvelous-relative-5de.notion.site/hack](https://marvelous-relative-5de.notion.site/hack).
 
@@ -10,14 +10,14 @@ This repo was generated from [azizu06/hackathon-agent-board](https://github.com/
 
 ## Who owns what
 
-The application is not created yet. Scope is the understanding-transfer flow in `docs/PRODUCT.md`. Roles and paths are in the table and in `docs/TEAM_PLAN.md`.
+The application is not created yet. The flow is voice or text, clarification, review, briefing, a separate acknowledgment, then a targeted check. Roles below are the ones the team kept.
 
 | Person | Login | Role | Owns |
 |---|---|---|---|
-| Ethan Meza | `ethnmz` | Frontend & Demo | `frontend/`, `docs/DEMO_SCRIPT.md` |
-| Diego Lozano | `Navibytes` | Bridge & Voice | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
-| Akshi Biswal | `biswalakshi` | AI | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py` |
-| Aditri Tangeti | `aditrit06` | Ledger Core | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py`, `backend/tests/test_scenario.py` |
+| Ethan Meza | `ethnmz` | Frontend & Demo | `frontend/` including Create, Receive, History, Supervisor, and Evaluation; `docs/DEMO_SCRIPT.md` |
+| Diego Lozano | `Navibytes` | Bridge & Voice | `photon-bridge/`, `backend/app/stt/`, ingest and voice-answer transport. Not the Create screen. |
+| Akshi Biswal | `biswalakshi` | AI | `backend/app/llm/`, prompts, `extract/`, quote check, grading call |
+| Aditri Tangeti | `aditrit06` | Core Logic & Data | state, rules, follow-ups, planner, verdict floor, database, backend tests, eval runner |
 
 Logins recorded for these docs: `ethnmz`, `Navibytes`, `biswalakshi`, `aditrit06`. The board tag for each is written in `AGENTS.md`. Shared changes to `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md` need all four people.
 

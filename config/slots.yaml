@@ -1,0 +1,100 @@
+# Required information per handoff item kind. Drives gap detection (clarify/gaps.py),
+# the adaptive question planner (clarify/planner.py), and verification answer keys.
+#   required: true      → missing/vague/uncertain value is a gap
+#   safety: true        → mandatory: kept even when simplifying; blocks submit until answered ("I don't know" is a valid answer)
+#   when                → condition for the slot to be required (evaluated on other facts / asset category)
+#   followup_if         → certainty/normalized values that auto-create a FollowUp
+
+budgets:
+  clarification_questions: 3      # per handoff (Shift A)
+  slots_per_question: 2           # group closely related slots on the same item
+  verification_questions: 3       # per handoff (Shift B)
+  verification_attempts: 2        # then needs_clarification → lead clarifies in person
+  ask_threshold: 50               # gaps scoring below this are recorded as not_asked
+
+priority:                         # planner score = gap weight + item priority bonus
+  gap_weight:
+    vague_statement: 90
+    missing_required: 85
+    uncertain_claim: 80
+    missing_rationale: 70
+    missing_condition: 60
+    missing_owner_or_deadline: 40
+    unscoped_claim: 30
+  item_priority_bonus: { critical: 30, important: 10, routine: 0 }
+
+language:
+  # Caps certainty at "unverified"
+  hedges: ["i think", "i believe", "probably", "maybe", "might", "should be", "should've", "mostly",
+           "pretty sure", "as far as i know", "supposedly", "i guess", "hopefully", "almost done", "basically done"]
+  # Caps certainty at "unknown"
+  uncertainty_terms: ["not sure", "no idea", "don't know", "dont know", "unclear", "not certain", "haven't heard",
+                      "never got", "no confirmation", "haven't received confirmation", "can't confirm"]
+  # Caps certainty at "reported" (observation or second-hand, not verification)
+  observation_terms: ["looks good", "looks fine", "looks okay", "seems", "seemed", "appears", "vendor said",
+                      "they said", "apparently", "i was told"]
+  # Vague reassurance: never fills a safety slot by itself → vague_statement gap
+  vague_terms: ["everything is fine", "everything's fine", "everything should be okay", "everything else should be okay",
+                "should be fine", "should be okay", "it's handled", "its handled", "taken care of", "all good",
+                "good to go", "nothing to worry about", "mostly finished", "should be done", "coming back tomorrow"]
+  # Catch-alls with no equipment named → unscoped_claim
+  unscoped_terms: ["everything else", "the rest", "all the other", "otherwise"]
+
+kinds:
+  vendor_work: &work
+    description: "Maintenance/repair/testing work, internal or vendor"
+    slots:
+      work_status:           { required: true, safety: true, values: [complete, incomplete, pending, not_started, unknown],
+                               followup_if: { normalized: [incomplete, pending, unknown], certainty: [unverified, unknown] } }
+      remaining_work:        { required: true, when: "work_status != complete", hint: "What exactly is unfinished?" }
+      rationale:             { required: true, when: "work_status in [incomplete, pending]", hint: "Why is it unfinished / postponed?" }
+      operational_clearance: { required: true, safety: true, when: "asset_category in [power, cooling] and work_status != complete",
+                               values: [cleared, not_cleared, unknown], followup_if: { normalized: [not_cleared, unknown], certainty: [unverified, unknown] },
+                               hint: "Is the equipment cleared for normal operation?" }
+      required_verification: { required: false, hint: "What must be verified, by whom, before testing/normal operation?" }
+      next_action:           { required: true, when: "work_status != complete" }
+      owner:                 { required: false, hint: "Who follows up? (only if stated, or assigned by a lead/supervisor)" }
+      deadline:              { required: false }
+      vendor_return:         { required: false }
+  maintenance: *work
+  testing: *work
+  inspection:
+    description: "Inspection or check"
+    slots:
+      work_status:         { required: true, safety: true, values: [complete, incomplete, pending, unknown],
+                             followup_if: { normalized: [incomplete, pending, unknown], certainty: [unverified, unknown] } }
+      equipment_scope:     { required: true, hint: "Which equipment / system was inspected?" }
+      findings:            { required: true, when: "work_status == complete", hint: "What was found?" }
+      confirmation_source: { required: false, hint: "Who confirmed it (report, vendor, person)?" }
+  bypass:
+    description: "Equipment in bypass / manual / non-normal mode"
+    slots:
+      current_mode:      { required: true, safety: true }
+      rationale:         { required: true, safety: true }
+      restore_condition: { required: true, safety: true, hint: "What must happen before returning to normal?" }
+      contingency:       { required: false }
+  decision:
+    description: "A decision such as postponed, deferred, cancelled, kept"
+    slots:
+      decision:          { required: true }
+      rationale:         { required: true, safety: true, hint: "Why was this decided?" }
+      restore_condition: { required: true, hint: "What must happen before it changes / is rescheduled?" }
+      restrictions:      { required: false, hint: "Conditions or exceptions the next shift must respect" }
+  lockout_tagout:
+    description: "LOTO on equipment"
+    slots:
+      lockout_status: { required: true, safety: true, values: [active, removed, unknown] }
+      tag_holder:     { required: true, safety: true }
+  warning:
+    description: "Critical warning the next shift must know"
+    slots:
+      condition:   { required: true }
+      next_action: { required: true }
+  general_claim:
+    description: "Catch-all reassurance without named equipment"
+    slots:
+      scope: { required: true, hint: "Which equipment does this cover?" }
+  observation:
+    description: "Something observed (not a verification)"
+    slots:
+      condition: { required: true }

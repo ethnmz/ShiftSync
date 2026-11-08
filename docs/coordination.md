@@ -78,4 +78,4 @@ Use `<issue#>-<slug>` when the work already has an issue. Review of a branch you
 
 ## Ownership
 
-Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. `docs/PRODUCT.md` is the scope. `docs/IMPORT_NOTES.md` lists what is not built.
+Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. `docs/PRODUCT.md` is the scope. `docs/CONTRACT_MIGRATION.md` is the contract diff. Ethan's existing `ethan/frontend` checkout stays valid.
