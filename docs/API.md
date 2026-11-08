@@ -1,6 +1,6 @@
 # API Contract
 
-This is the final spec pack's contract. It replaces the earlier interview/signoff routes. Differences from the in-person nine-item agreement are in `docs/CONTRACT_MIGRATION.md`. Those differences are proposals for review, not a new approval from all four people.
+This is the final spec pack's contract. It replaces the earlier interview/signoff routes. Differences from the in-person nine-item agreement are in `docs/CONTRACT_MIGRATION.md`. All four people approved the pack's version of all six differences on the board on 2026-11-08 (https://github.com/ethnmz/hackutd2026/issues/1#issuecomment-6716896792 and the replies below it). An open follow-up with no owner does not block completion.
 
 Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/src/api/types.ts`; fixtures in `src/api/fixtures/`. Demo auth: `X-User: <roster id>` header (role from roster). Role checks are enforced for submit, acknowledge, follow-up assignment and clarified-in-person.
 
