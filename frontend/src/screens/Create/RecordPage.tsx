@@ -148,8 +148,6 @@ export default function RecordPage() {
 
         {/* Conversation */}
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-5" aria-live="polite">
-          <span className="self-center rounded-full border border-line px-3.5 py-1 text-sm text-muted">Handoff to {incoming}</span>
-
           {notes.length === 0 && !send.isPending && (
             <div className="m-auto flex max-w-sm flex-col items-center gap-2 py-10 text-center">
               <h1 className="text-xl font-semibold">What is the next shift taking over?</h1>

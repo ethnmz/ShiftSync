@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { FIXTURE_MODE } from "../api/client";
 import { DEMO_USERS, useUser } from "../session/user";
 import { ChartIcon, ClockIcon, HomeIcon, InboxIcon, PeopleIcon, PlusCircleIcon } from "./icons";
 
@@ -91,16 +90,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </span>
         ))}
       </nav>
-
-      <hr className="mx-1 border-line" />
-      <div className="mt-4 px-1">
-        <span
-          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${FIXTURE_MODE ? "bg-warn/10 text-warn" : "bg-ok/10 text-ok"}`}
-          title={FIXTURE_MODE ? "No backend. Scripted fixtures replay demo/scenario.json." : "Calling the FastAPI backend at /api"}
-        >
-          {FIXTURE_MODE ? "Offline demo data" : "Live API"}
-        </span>
-      </div>
     </div>
   );
 

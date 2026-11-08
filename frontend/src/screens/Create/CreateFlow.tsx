@@ -157,7 +157,7 @@ export default function CreateFlow() {
         <div className="mx-auto flex w-full max-w-[1180px] flex-col">
           <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
             <div className="min-w-0">
-              <h1 className="text-4xl font-semibold">{id ? "Your handoff" : "New handoff"}</h1>
+              <h1 className="text-3xl font-semibold">{id ? "Your handoff" : "New handoff"}</h1>
               <p className="mt-2 flex flex-wrap items-center gap-x-2 text-muted">
                 <span>
                   {user.name} → {incoming}
