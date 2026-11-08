@@ -8,6 +8,7 @@ statement is kept and nothing else changes.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
@@ -294,6 +295,28 @@ def _guard_fact(normalized: str | None, quote: str) -> str | None:
     return None
 
 
+def _norm_words(text: str) -> str:
+    return " " + re.sub(r"[^a-z0-9]+", " ", text.lower()).strip() + " "
+
+
+def _mentioned_asset(ext: Any, statement_text: str, registry: dict[str, Any]) -> str | None:
+    """The extracted asset id, only if the speaker actually named that equipment.
+
+    The id, name or one of its aliases from assets.yaml must appear in the
+    statement (case, hyphens and punctuation ignored). Otherwise the model picked
+    equipment nobody mentioned, and the item gets no asset rather than a guessed one.
+    """
+    asset_id = getattr(ext, "asset_id", None)
+    asset = registry.get(asset_id) if asset_id else None
+    if asset is None:
+        return None
+    said = _norm_words(statement_text)
+    names = [asset_id, asset.get("name", ""), *asset.get("aliases", [])]
+    if any(n and _norm_words(n) in said for n in names):
+        return asset_id
+    return None
+
+
 def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: ClarificationQuestion | None) -> None:
     items = {i.id: i for i in handoff_items(session, h.id)}
     registry = config.assets()
@@ -307,7 +330,7 @@ def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: Cl
         link = getattr(ext, "link_item_id", None)
         if link in items:
             return items[link]
-        asset = ext.asset_id if getattr(ext, "asset_id", None) in registry else None
+        asset = _mentioned_asset(ext, stmt.text, registry)
         # An answer to a question about an item updates that item, even if the model
         # labels it another kind ("bypass" for UPS-B's clearance answer). Only a
         # different named asset makes it a separate item.
@@ -320,7 +343,7 @@ def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: Cl
         return None
 
     for ext in list(getattr(extraction, "items", []) or []):
-        asset = ext.asset_id if getattr(ext, "asset_id", None) in registry else None
+        asset = _mentioned_asset(ext, stmt.text, registry)
         target = find_target(ext)
         if target is None:
             target = Item(id=next_id(session, Item), handoff_id=h.id, kind=ext.kind, title=ext.title,

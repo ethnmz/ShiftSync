@@ -362,3 +362,21 @@ def test_scoped_answers_update_the_asked_item_even_if_model_picks_another_kind(e
     chl = _item(d, asset="CHL-2")
     assert chl["id"] == cool["id"] and _fact(chl, "work_status")["certainty"] == "unknown"
     assert d["state"] == "in_review" and d["budget"]["used"] == 3
+
+
+def test_asset_the_speaker_never_named_is_ignored(env):
+    """Live Lightning mapped "It's still in maintenance bypass" to Utility Feed C."""
+    client, analyzer = env
+    clock.set_now(STEP[1]["at"])
+    hid = client.post("/api/handoffs", json={"outgoing_id": "maya", "incoming_id": "jordan"},
+                      headers=H("maya")).json()["id"]
+    analyzer.push(Extraction(items=[
+        EI(kind="vendor_work", title="UPS-B maintenance", asset_id="UPS-B", facts=[
+            EF("work_status", "Mostly finished", "confirmed", "UPS-B maintenance is mostly finished", "incomplete")]),
+        EI(kind="bypass", title="Utility Feed C maintenance bypass", asset_id="UTIL-C", facts=[
+            EF("current_mode", "maintenance bypass", "confirmed", "UPS-B maintenance is mostly finished")]),
+    ]))
+    _say(hid, "UPS-B maintenance is mostly finished.", analyzer)
+    d = client.get(f"/api/handoffs/{hid}").json()
+    assert _item(d, asset="UPS-B")
+    assert not [it for it in d["items"] if "UTIL-C" in it["asset_ids"]]  # never attached to unnamed equipment
