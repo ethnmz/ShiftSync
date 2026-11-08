@@ -1,7 +1,7 @@
 """Shift B routes: briefing, acknowledge, verification (docs/API.md).
 
-Voice answers go through Diego's transport, which calls `receive.answer_check`.
-This JSON route takes typed answers.
+`POST /verification/{vid}/answer` (typed and voice) lives in Diego's
+app/routes/ingest.py and calls `receive.answer_check`.
 """
 from __future__ import annotations
 
@@ -15,10 +15,6 @@ from app.handoff.detail import handoff_detail
 from app.routes.deps import current_user, get_analyzer, get_session
 
 router = APIRouter()
-
-
-class AnswerBody(BaseModel):
-    text: str
 
 
 class ClarifiedBody(BaseModel):
@@ -40,12 +36,6 @@ def acknowledge(handoff_id: str, user: str = Depends(current_user), session: Ses
 async def start(handoff_id: str, user: str = Depends(current_user), session: Session = Depends(get_session),
                 analyzer: Analyzer = Depends(get_analyzer)):
     return await receive.start_verification(session, handoff_id, user, analyzer=analyzer)
-
-
-@router.post("/verification/{check_id}/answer")
-async def answer(check_id: str, body: AnswerBody, user: str = Depends(current_user),
-                 session: Session = Depends(get_session), analyzer: Analyzer = Depends(get_analyzer)):
-    return await receive.answer_check(session, check_id, user, body.text, source="text_web", analyzer=analyzer)
 
 
 @router.post("/verification/{check_id}/clarified-in-person")
