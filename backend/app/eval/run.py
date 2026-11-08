@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import statistics
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,6 +69,15 @@ def _words(text: str) -> int:
     return len(text.split())
 
 
+def _evidence_pieces(evidence: str) -> list[str]:
+    """Split a quote where the judge joined artifact lines or cut text out with "..." / "…".
+    Every piece must be found on its own, so joining real lines still counts and an invented
+    piece still fails. Assumption: pieces under MIN_EVIDENCE_CHARS are skipped, since a piece
+    like "unknown" matches almost any artifact; a quote with no piece that long never counts."""
+    parts = re.split(r"\n|\.{3,}|\u2026", evidence.lower())
+    return [p for p in (x.strip(" \t-:|") for x in parts) if len(p) >= MIN_EVIDENCE_CHARS]
+
+
 def _grounded(flags: list[Any], *sources: str) -> tuple[list[Any], list[dict[str, Any]]]:
     """Keep an ok flag only if its evidence is really in one of `sources` (what Shift B reads,
     plus QUESTIONS ASKED for missing_detected). The judge also sees NOTES and OPERATOR ANSWERS
@@ -76,9 +86,8 @@ def _grounded(flags: list[Any], *sources: str) -> tuple[list[Any], list[dict[str
     out, dropped = [], []
     hay = [t.lower() for t in sources if t]
     for f in flags:
-        ev = (getattr(f, "evidence", "") or "").strip().lower()
-        # Assumption: under MIN_EVIDENCE_CHARS a quote like "unknown" matches almost any artifact.
-        found = len(ev) >= MIN_EVIDENCE_CHARS and any(fuzz.partial_ratio(ev, h) >= QUOTE_MATCH for h in hay)
+        pieces = _evidence_pieces(getattr(f, "evidence", "") or "")
+        found = bool(pieces) and all(any(fuzz.partial_ratio(p, h) >= QUOTE_MATCH for h in hay) for p in pieces)
         if f.ok and not found:
             dropped.append({"index": f.index, "evidence": f.evidence, "why": f.why})
             f = f.model_copy(update={"ok": False})
