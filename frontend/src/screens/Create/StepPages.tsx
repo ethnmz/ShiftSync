@@ -111,7 +111,7 @@ export function ReviewPage() {
           </Notice>
           <StatusLine handoff={h} />
           <div className="flex flex-wrap gap-2">
-            <Link to={`/receive/${h.id}`} className="inline-flex min-h-touch items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink">
+            <Link to={`/receive/${h.id}`} className="inline-flex min-h-touch items-center rounded-lg bg-ink px-4 text-sm font-semibold text-white hover:bg-ink/90">
               Open the incoming view →
             </Link>
             <Button

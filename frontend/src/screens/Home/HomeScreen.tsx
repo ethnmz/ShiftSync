@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { errorMessage, listFollowups, listHandoffs } from "../../api/client";
 import type { HandoffState, HandoffSummary } from "../../api/types";
 import { CheckCircleIcon, FlagIcon, HelpIcon, InboxIcon, ListIcon } from "../../components/icons";
-import { Notice, Skeleton } from "../../components/ui";
+import { DashCard, Notice, Skeleton } from "../../components/ui";
 import { formatClock, formatWhen } from "../../labels";
 import { useUser } from "../../session/user";
 import { ownerName } from "../../components/FollowUpRow";
@@ -31,24 +31,6 @@ const STATE_LABEL: Record<HandoffState, string> = {
 function greeting() {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
-// Rounded square icon tile used in card headers.
-function Tile({ children }: { children: ReactNode }) {
-  return <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink">{children}</span>;
-}
-
-function HomeCard({ icon, title, aside, children }: { icon: ReactNode; title: string; aside?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
-      <div className="mb-6 flex items-center gap-4">
-        <Tile>{icon}</Tile>
-        <h2 className="text-xl font-medium">{title}</h2>
-        {aside && <div className="ml-auto">{aside}</div>}
-      </div>
-      {children}
-    </section>
-  );
 }
 
 // Outlined "View" button, or the flat gray disabled pill when there's nothing to do.
@@ -167,7 +149,7 @@ export default function HomeScreen() {
 
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
           <div className="flex flex-col gap-8">
-            <HomeCard icon={<CheckCircleIcon />} title="Waiting on you">
+            <DashCard icon={<CheckCircleIcon />} title="Waiting on you">
               {handoffs.isLoading ? (
                 <Skeleton />
               ) : (
@@ -186,9 +168,9 @@ export default function HomeScreen() {
                   </li>
                 </ul>
               )}
-            </HomeCard>
+            </DashCard>
 
-            <HomeCard icon={<InboxIcon />} title="How a handoff works">
+            <DashCard icon={<InboxIcon />} title="How a handoff works">
               <ol className="flex flex-col gap-3 text-base leading-relaxed">
                 <li>
                   <strong>Record</strong> what the next shift is taking over, in your own words.
@@ -205,11 +187,11 @@ export default function HomeScreen() {
                 </li>
               </ol>
               <p className="mt-4 text-sm text-muted">Acknowledging or verifying a handoff never closes open issues or confirms equipment is safe.</p>
-            </HomeCard>
+            </DashCard>
           </div>
 
           <div className="flex flex-col gap-8">
-            <HomeCard icon={<FlagIcon />} title="Open follow-ups" aside={<span className="text-sm text-muted">{open.length} open</span>}>
+            <DashCard icon={<FlagIcon />} title="Open follow-ups" aside={<span className="text-sm text-muted">{open.length} open</span>}>
               {followups.isLoading ? (
                 <Skeleton />
               ) : followups.isError ? (
@@ -239,9 +221,9 @@ export default function HomeScreen() {
                   ))}
                 </ul>
               )}
-            </HomeCard>
+            </DashCard>
 
-            <HomeCard icon={<ListIcon />} title="Recent handoffs">
+            <DashCard icon={<ListIcon />} title="Recent handoffs">
               {handoffs.isLoading ? (
                 <Skeleton />
               ) : list.length === 0 ? (
@@ -270,7 +252,7 @@ export default function HomeScreen() {
                   })}
                 </ul>
               )}
-            </HomeCard>
+            </DashCard>
           </div>
         </div>
       </div>

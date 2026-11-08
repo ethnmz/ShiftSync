@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet, useMatch } from "react-router-dom";
-import { FIXTURE_MODE, getHandoff } from "../../api/client";
+import { NavLink, Outlet, useMatch } from "react-router-dom";
+import { getHandoff } from "../../api/client";
 import type { HandoffDetail } from "../../api/types";
 import { formatElapsed } from "../../labels";
 import { isEditable } from "../../review";
-import { DEMO_USERS, useUser } from "../../session/user";
+import { person, useUser } from "../../session/user";
 
 // The demo pairing (demo/scenario.json step 1). docs/UI.md does not say how
 // the incoming lead is picked yet.
@@ -77,21 +77,22 @@ function StepPill({ id, handoff }: { id?: string; handoff?: HandoffDetail }) {
     review: !!handoff && handoff.items.length > 0,
   };
   return (
-    <nav aria-label="Handoff steps" className="flex rounded-xl bg-subtle p-1">
+    <nav aria-label="Handoff steps" className="flex rounded-xl border border-line bg-surface p-1">
       {STEPS.map((s, i) =>
         id && reachable[s.id] ? (
           <NavLink
             key={s.id}
             to={`/create/${id}/${s.id}`}
             className={({ isActive }) =>
-              `flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold sm:px-5 ${
-                isActive ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink"
+              `flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-sm font-semibold sm:px-4 ${
+                isActive ? "bg-ink text-white" : "text-muted hover:bg-subtle hover:text-ink"
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <span className="sr-only">Step {i + 1}: </span>
+                <span className="sr-only">Step </span>
+                <span aria-hidden className="text-xs opacity-70">{i + 1}</span>
                 {s.label}
                 {isActive && <span className="sr-only"> (current)</span>}
               </>
@@ -101,10 +102,11 @@ function StepPill({ id, handoff }: { id?: string; handoff?: HandoffDetail }) {
           <span
             key={s.id}
             aria-current={!id && s.id === "record" ? "step" : undefined}
-            className={`flex min-h-[36px] items-center rounded-lg px-2.5 text-sm font-semibold sm:px-5 ${
-              !id && s.id === "record" ? "bg-surface text-ink shadow-sm" : "text-faint"
+            className={`flex min-h-[40px] items-center gap-2 rounded-lg px-3 text-sm font-semibold sm:px-4 ${
+              !id && s.id === "record" ? "bg-ink text-white" : "text-faint"
             }`}
           >
+            <span aria-hidden className="text-xs opacity-70">{i + 1}</span>
             {s.label}
           </span>
         ),
@@ -113,13 +115,13 @@ function StepPill({ id, handoff }: { id?: string; handoff?: HandoffDetail }) {
   );
 }
 
-// Full-screen, step-by-step layout for Shift A (Record -> Clarify -> Review),
-// outside the app shell so the operator only sees the step at hand.
+// Step-by-step layout for Shift A (Record -> Clarify -> Review) inside the
+// dashboard shell, styled like Home.
 export default function CreateFlow() {
   // One mounted layout for every step, so the timer and recordings survive
   // moving between pages. The child route's :id is read from the URL here.
   const id = useMatch("/create/:id/*")?.params.id;
-  const { user, setUser } = useUser();
+  const { user } = useUser();
   const { data: handoff } = useHandoffQuery(id);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [stoppedAt, setStoppedAt] = useState<number | null>(null);
@@ -148,60 +150,35 @@ export default function CreateFlow() {
     attachClip: (sid, clip) => setClips((m) => new Map(m).set(sid, clip)),
   };
 
+  const incoming = handoff?.incoming.name ?? person(DEMO_INCOMING_ID)?.name;
   return (
     <FlowContext.Provider value={value}>
-      <div className="flex min-h-screen flex-col bg-bg">
-        <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center gap-2 bg-bg/90 px-3 py-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-3 sm:px-6 backdrop-blur sm:px-6">
-          <Link to="/" className="flex items-center gap-2 justify-self-start" aria-label="ShiftSync home">
-            <Mark />
-            <span className="hidden text-base font-bold tracking-tight sm:inline">ShiftSync</span>
-          </Link>
-          <div className="justify-self-center"><StepPill id={id} handoff={handoff} /></div>
-          <div className="flex items-center gap-2 justify-self-end">
-            {elapsed !== null && (
-              <span className="hidden text-sm tabular-nums text-muted sm:inline" aria-label="Time on this handoff">
-                {formatElapsed(elapsed)}
-              </span>
-            )}
-            {FIXTURE_MODE && (
-              <span className="hidden rounded-md border border-warn/30 bg-warn/10 px-1.5 py-0.5 text-xs font-semibold text-warn md:inline" title="No backend: scripted fixtures">
-                Offline demo
-              </span>
-            )}
-            <label htmlFor="flow-user" className="sr-only">
-              Demo user (not sign-in)
-            </label>
-            <select
-              id="flow-user"
-              value={user.id}
-              onChange={(e) => setUser(e.target.value)}
-              title="Demo user, not sign-in"
-              className="min-h-[36px] w-[4.75rem] rounded-full border border-line bg-surface px-2 text-sm sm:w-auto sm:max-w-[9rem] sm:px-3"
-            >
-              {DEMO_USERS.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name.split(" ")[0]} · {u.role}
-                </option>
-              ))}
-            </select>
+      <div className="flex flex-1 flex-col px-4 pt-6 sm:px-10 lg:px-14">
+        <div className="mx-auto flex w-full max-w-[1180px] flex-col">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+            <div className="min-w-0">
+              <h1 className="text-4xl font-semibold tracking-tighter sm:text-[44px]">{id ? "Your handoff" : "New handoff"}</h1>
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 text-muted">
+                <span>
+                  {user.name} → {incoming}
+                </span>
+                {id && <span>· {id}</span>}
+                {elapsed !== null && (
+                  <span className="tabular-nums" aria-label="Time on this handoff">
+                    · {formatElapsed(elapsed)}
+                  </span>
+                )}
+              </p>
+            </div>
+            <StepPill id={id} handoff={handoff} />
           </div>
-        </header>
+        </div>
         <Outlet />
       </div>
     </FlowContext.Provider>
   );
 }
 
-// ShiftSync's own mark: two offset bars for the two shifts.
-function Mark() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden className="text-ink">
-      <rect x="3" y="7" width="16" height="5" rx="2.5" fill="currentColor" />
-      <rect x="9" y="16" width="16" height="5" rx="2.5" fill="rgb(var(--accent))" />
-    </svg>
-  );
-}
-
 export function PageWidth({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
-  return <main className={`mx-auto flex w-full flex-1 flex-col px-4 pb-40 pt-2 sm:px-6 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>{children}</main>;
+  return <div className={`mx-auto mt-8 flex w-full flex-1 flex-col pb-40 ${wide ? "max-w-[1180px]" : "max-w-3xl"}`}>{children}</div>;
 }

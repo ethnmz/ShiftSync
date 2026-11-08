@@ -33,7 +33,7 @@ function Reply({ handoff, onContinue }: { handoff: HandoffDetail; onContinue: ()
   const order = { critical: 0, important: 1, routine: 2 } as const;
   const items = [...handoff.items].sort((a, b) => order[a.priority] - order[b.priority]);
   return (
-    <div className="max-w-[88%] self-start rounded-2xl border border-line bg-surface p-4 shadow-sm">
+    <div className="max-w-[88%] self-start rounded-2xl border border-line bg-surface p-5">
       <p className="leading-relaxed">
         I pulled {items.length} item{items.length === 1 ? "" : "s"} out of your note.{" "}
         {pending ? `I have up to ${handoff.budget.max} quick questions before ${handoff.incoming.name.split(" ")[0]} takes over.` : "Nothing important is missing."}
@@ -118,7 +118,7 @@ export default function RecordPage() {
 
   return (
     <PageWidth>
-      <section aria-label="Handoff note" className="flex min-h-[calc(100vh-15rem)] flex-col rounded-2xl border border-line bg-surface shadow-sm">
+      <section aria-label="Handoff note" className="flex min-h-[calc(100vh-22rem)] flex-col rounded-2xl border border-line bg-surface">
         {/* Card header: mode toggle and exit */}
         <div className="relative flex items-center justify-center border-b border-line px-4 py-3">
           <div role="tablist" aria-label="How to give the note" className="flex rounded-xl bg-subtle p-1">
@@ -260,7 +260,7 @@ export default function RecordPage() {
 
       {/* Docked Record pill */}
       {!locked && (
-        <div className="fixed inset-x-0 bottom-6 z-20 flex justify-center px-4">
+        <div className="fixed inset-x-0 bottom-6 z-20 flex justify-center px-4 md:left-[272px]">
           <div className="w-full max-w-md rounded-full border border-line bg-surface p-2 shadow-lg">
             {!rec.supported ? (
               <p className="px-4 py-3 text-center text-sm text-muted">{RECORDER_ERROR_TEXT.unsupported}</p>

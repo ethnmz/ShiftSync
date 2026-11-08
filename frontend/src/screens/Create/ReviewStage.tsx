@@ -110,7 +110,7 @@ export default function ReviewStage({
   );
 
   return (
-    <div className="flex flex-col gap-6 pb-4">
+    <div className="flex flex-col gap-8 pb-4">
       <p className="text-sm text-muted">
         <strong className="text-ink">✓ Correct</strong> means the AI wrote down what you said. It does not change certainty: an Unknown stays
         Unknown. Select a quote to see it in the transcript.
@@ -118,7 +118,7 @@ export default function ReviewStage({
 
       <section aria-labelledby="crit" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="crit" className="text-base font-semibold">
+          <h2 id="crit" className="text-xl font-medium">
             Critical: check each fact
           </h2>
           <span className="text-sm tabular-nums text-muted">
@@ -134,7 +134,7 @@ export default function ReviewStage({
       {others.length > 0 && (
         <section aria-labelledby="other" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="other" className="text-base font-semibold">
+            <h2 id="other" className="text-xl font-medium">
               Important and routine
             </h2>
             {editable && (
@@ -148,7 +148,7 @@ export default function ReviewStage({
       )}
 
       <section aria-labelledby="fu" className="flex flex-col gap-3">
-        <h2 id="fu" className="text-base font-semibold">
+        <h2 id="fu" className="text-xl font-medium">
           Follow-ups
         </h2>
         <Card>
@@ -166,7 +166,7 @@ export default function ReviewStage({
       </section>
 
       {editable && (
-        <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-3 border-t border-line bg-bg/95 px-4 py-3 backdrop-blur lg:-mx-8 lg:px-8">
+        <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-line bg-surface/95 px-5 py-4 backdrop-blur">
           {openQuestions > 0 && (
             <Notice tone="warn">
               {openQuestions} clarification question still open. Safety questions must be answered first ("I don't know" counts).

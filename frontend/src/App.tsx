@@ -14,20 +14,20 @@ function NotBuilt({ name }: { name: string }) {
 export default function App() {
   return (
     <Routes>
-      {/* Shift A: one page per step, full screen. */}
-      <Route path="/create" element={<CreateFlow />}>
-        <Route index element={<RecordPage />} />
-        <Route path=":id" element={<StepRedirect />} />
-        <Route path=":id/record" element={<RecordPage />} />
-        <Route path=":id/clarify" element={<ClarifyPage />} />
-        <Route path=":id/review" element={<ReviewPage />} />
-      </Route>
       <Route
         path="*"
         element={
           <AppShell>
             <Routes>
               <Route path="/" element={<HomeScreen />} />
+              {/* Shift A: one page per step, inside the shell. */}
+              <Route path="/create" element={<CreateFlow />}>
+                <Route index element={<RecordPage />} />
+                <Route path=":id" element={<StepRedirect />} />
+                <Route path=":id/record" element={<RecordPage />} />
+                <Route path=":id/clarify" element={<ClarifyPage />} />
+                <Route path=":id/review" element={<ReviewPage />} />
+              </Route>
               <Route path="/receive" element={<ReceiveList />} />
               <Route path="/receive/:id" element={<ReceiveScreen />} />
               <Route path="/history" element={<NotBuilt name="History" />} />

@@ -1,7 +1,8 @@
 import type { AnswerInput } from "../../api/client";
 import type { HandoffDetail, Question } from "../../api/types";
 import QuestionCard from "../../components/QuestionCard";
-import { Button, Card, Notice } from "../../components/ui";
+import { Button, Card, DashCard, Notice } from "../../components/ui";
+import { CheckCircleIcon, ListIcon } from "../../components/icons";
 import { slotLabel } from "../../labels";
 
 // What an answered question added: the facts sourced from its answer.
@@ -35,8 +36,8 @@ export default function ClarifyStage({
   const lastEffect = last ? effectOf(handoff, last) : null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card className="p-5">
+    <div className="flex flex-col gap-8">
+      <Card className="p-6 sm:p-8">
         {/* Progress across the budget (docs/API.md budget.max). */}
         <div className="mb-5 flex items-center gap-3">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-subtle" role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={answered.length} aria-label="Questions answered">
@@ -95,34 +96,32 @@ export default function ClarifyStage({
       </Card>
 
       {answered.length > 0 && (
-        <Card>
-          <h3 className="border-b border-line px-4 py-2.5 text-sm font-semibold">Answered</h3>
-          <ol className="divide-y divide-line">
+        <DashCard icon={<CheckCircleIcon />} title="Answered" aside={`${answered.length} of up to ${max}`}>
+          <ol className="flex flex-col divide-y divide-line">
             {answered.map((q) => {
               const e = effectOf(handoff, q);
               const ans = handoff.statements.find((s) => s.question_id === q.id)?.text;
               return (
-                <li key={q.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
+                <li key={q.id} className="flex flex-col gap-1 py-4 first:pt-0 last:pb-0">
                   <span className="text-muted">{q.text}</span>
                   {ans && <span>“{ans}”</span>}
-                  <span className={e.tone === "ok" ? "text-ok" : "text-unk"}>
+                  <span className={`text-sm ${e.tone === "ok" ? "text-ok" : "text-unk"}`}>
                     {e.tone === "ok" ? "✓" : "?"} {e.text}
                   </span>
                 </li>
               );
             })}
           </ol>
-        </Card>
+        </DashCard>
       )}
 
-      <Card>
-        <h3 className="border-b border-line px-4 py-2.5 text-sm font-semibold">Not asked (low priority)</h3>
+      <DashCard icon={<ListIcon />} title="Not asked (low priority)">
         {handoff.not_asked.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-muted">Nothing skipped so far.</p>
+          <p className="text-lg text-faint">Nothing skipped so far</p>
         ) : (
-          <ul className="divide-y divide-line">
+          <ul className="flex flex-col divide-y divide-line">
             {handoff.not_asked.map((n, i) => (
-              <li key={`${n.item_id}-${i}`} className="flex flex-wrap gap-x-2 px-4 py-2.5 text-sm">
+              <li key={`${n.item_id}-${i}`} className="flex flex-wrap gap-x-2 py-3 first:pt-0 last:pb-0">
                 <span className="font-medium">{titleOf(n.item_id)}</span>
                 <span className="text-muted">{n.slots.map(slotLabel).join(", ")}</span>
                 <span className="text-faint">· {n.reason}</span>
@@ -130,7 +129,7 @@ export default function ClarifyStage({
             ))}
           </ul>
         )}
-      </Card>
+      </DashCard>
     </div>
   );
 }

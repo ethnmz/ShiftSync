@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 const VARIANT: Record<Variant, string> = {
-  primary: "bg-accent text-accent-ink hover:bg-accent/90 border border-transparent",
+  primary: "bg-ink text-white hover:bg-ink/90 border border-transparent",
   secondary: "bg-surface text-ink border border-line-strong hover:bg-subtle",
   ghost: "text-muted hover:text-ink hover:bg-subtle border border-transparent",
   danger: "bg-surface text-danger border border-danger/40 hover:bg-danger/10",
@@ -48,7 +48,7 @@ export function Chip({ tone = "neutral", icon, children, title }: { tone?: Tone;
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-xl border border-line bg-surface ${className}`}>{children}</section>;
+  return <section className={`rounded-2xl border border-line bg-surface ${className}`}>{children}</section>;
 }
 
 export function SectionTitle({ children, aside, id }: { children: ReactNode; aside?: ReactNode; id?: string }) {
@@ -117,5 +117,35 @@ export function PropRow({ label, children }: { label: string; children: ReactNod
       <dt className="text-muted">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>
+  );
+}
+
+// Dashboard card pieces (Home and the Create steps share them).
+export function Tile({ children }: { children: ReactNode }) {
+  return <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink">{children}</span>;
+}
+
+export function DashCard({
+  icon,
+  title,
+  aside,
+  children,
+  className = "",
+}: {
+  icon: ReactNode;
+  title: ReactNode;
+  aside?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={`rounded-2xl border border-line bg-surface p-6 sm:p-8 ${className}`}>
+      <div className="mb-6 flex items-center gap-4">
+        <Tile>{icon}</Tile>
+        <h2 className="text-xl font-medium">{title}</h2>
+        {aside && <div className="ml-auto text-sm text-muted">{aside}</div>}
+      </div>
+      {children}
+    </section>
   );
 }
