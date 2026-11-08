@@ -2,7 +2,7 @@
 
 HackUTD 2026 team repo: https://github.com/ethnmz/hackutd2026. Scope is [docs/PRODUCT.md](docs/PRODUCT.md). The project guide is [CLAUDE.md](CLAUDE.md). The pack's team plan is [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md). Import limits are [docs/IMPORT_NOTES.md](docs/IMPORT_NOTES.md).
 
-Agents coordinate on [Message Board #1](https://github.com/ethnmz/hackutd2026/issues/1). That issue exists and is not pinned yet. Collaboration rules are [AGENTS.md](AGENTS.md). Local `gh` setup is [docs/coordination.md](docs/coordination.md).
+Agents coordinate on [Message Board #1](https://github.com/ethnmz/hackutd2026/issues/1). That issue exists and is not pinned yet. Collaboration rules are [AGENTS.md](AGENTS.md). Local `gh` setup is [docs/coordination.md](docs/coordination.md). Each person's AI guide is in [docs/onboarding/README.md](docs/onboarding/README.md).
 
 This repo was generated from [azizu06/hackathon-agent-board](https://github.com/azizu06/hackathon-agent-board). The template walkthrough is [marvelous-relative-5de.notion.site/hack](https://marvelous-relative-5de.notion.site/hack).
 
