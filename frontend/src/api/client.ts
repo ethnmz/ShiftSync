@@ -203,3 +203,10 @@ export function closeFollowup(id: string, text: string): Promise<unknown> {
 export function errorMessage(e: unknown, fallback: string) {
   return e instanceof ApiError && e.status !== 409 ? e.message : fallback;
 }
+
+// Offline demo only: replays demo/scenario.json steps 1-6 so Receive has a
+// submitted handoff. Never called in live mode.
+export function loadOfflineDemo(): Promise<HandoffSummary> {
+  if (LIVE) return Promise.reject(new ApiError("The offline demo is not available in live mode.", 0));
+  return delay(sim.simLoadSubmittedDemo, 400);
+}
