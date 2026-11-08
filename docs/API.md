@@ -83,10 +83,49 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 `GET /supervisor/summary` → `{ "pending_handoffs": [...], "completed_today": [...], "unresolved_questions": n, "outstanding_acknowledgments": [...], "verification": {"verified": n, "with_assistance": n, "in_progress": n}, "followups": {"open": n, "unassigned": n, "overdue": n} }`
 
 ## Evaluation
-`POST /eval/run {provider?}` · `GET /eval/results` (see `EVALUATION.md`)
+See `EVALUATION.md`. Every number comes from real runs; nothing is filled in.
+- `POST /eval/run` `{ "runs"?: 3, "scenario"?: "vague_ups" }` → `{ "status": "running" }` (runs in the background; the provider comes from `LLM_PROVIDER` / `backend/.env`)
+- `GET /eval/results` → `EvalResults` (the contents of `backend/data/eval_results.json`, plus `"running": true` while a run is in progress)
+```jsonc
+// EvalResults
+{ "status": "complete" | "not_run",
+  "reason": "LLM client (app.llm.client) is not available yet",   // only when not_run; scenarios is then {}
+  "generated_at": "…", "provider": "nemotron", "runs": 3, "simulated": true,
+  "method_notes": [ "Simulated outgoing and incoming operators are LLM proxies for real people.", … ],
+  "scenarios": {
+    "vague_ups": { "problem": "1 Hidden assumptions: …",
+      "conditions": {                       // "normal" (notes unchanged) · "summary" (basic AI summary) · "shiftsync"
+        "shiftsync": {
+          "critical_facts_transferred":  Stat,          // fraction 0–1 (placeholder shape, not a result)
+          "missing_details_detected":    Stat | null,   // ShiftSync only; null for normal/summary
+          "ambiguous_clarified":         Stat | null,
+          "misunderstandings_prevented": Stat | null,   // simulated reader's answers graded correct
+          "unknowns_preserved":          Stat | null,   // null when the scenario has no unknowns
+          "incorrect_facts_introduced":  Stat,          // count
+          "shift_a_words_proxy":         Stat,          // effort proxy: words spoken by Shift A
+          "shift_b_words_proxy":         Stat,          // effort proxy: words read by Shift B
+          "clarification_questions_asked": Stat | null, // ShiftSync only
+          "not_asked":                   Stat | null,   // ShiftSync only
+          "examples": { "artifact": "what Shift B read in run 1", "incorrect_statements": [ "…" ] } } } } } }
+// Stat = { "mean", "min", "max", "n" } over runs; null when the metric doesn't apply
+```
 
 ## Demo control
-`POST /demo/reset` · `POST /demo/clock` · `POST /demo/step/{n}` (replays `demo/scenario.json` through the real endpoints) · `GET /demo/scenario`
+For the synthetic demo only. No `X-User`; each step acts as the scenario's actor.
+- `POST /demo/reset` → `{ "ok": true, "now": "2026-11-08T12:35:00Z" }` (drops all data, loads roster, assets and the carried-over history, sets the demo clock to step 1)
+- `POST /demo/clock` `{ "at": "ISO time" }` | `{ "advance_seconds": 60 }` | `{ "real": true }` → `{ "now" }`
+- `GET /demo/scenario` → `demo/scenario.json` as-is
+- `POST /demo/step/{n}?offline=true` → `DemoStep`. Replays step n of `demo/scenario.json` through the real service code at the step's time. `offline=true` (default) uses fixed AI outputs, so it works with no network; `offline=false` uses the configured provider. Steps must run in order: 409 `demo_order` if an earlier step is missing (e.g. no pending question), 404 `not_found` for an unknown n.
+```jsonc
+// DemoStep
+{ "step": 9, "at": "2026-11-08T13:02:00Z", "actor": "jordan", "offline": true,
+  "handoff": HandoffDetail,             // after the step
+  "question_shown": "…",                // steps 3–5 (the question being answered), 9 and 11 (the check question)
+  "briefing": Briefing,                 // step 7 only
+  "attempt": VerificationAttempt,       // steps 9–11 only
+  "before": { "open": 3, "unassigned": 1, "overdue": 0 },  // step 12 only (supervisor follow-up counts)
+  "after":  { "open": 3, "unassigned": 0, "overdue": 0 } } // step 12 only
+```
 
 ## Optional: Photon bridge
 `POST /inbound/imessage` `{ "sender_phone", "text" | audio }` → routes to the sender's open draft handoff (or creates one) → `{ "reply", "followups": [] }`. 403 `unknown_sender` if the number is not on the roster; nothing is stored.
