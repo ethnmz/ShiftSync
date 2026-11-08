@@ -33,6 +33,7 @@ from app.handoff.analyzer import Analyzer
 from app.handoff.detail import handoff_detail
 from app.models import Statement, VerificationCheck
 from app.routes.deps import current_user, get_analyzer, get_session
+from app.stt import audio
 
 log = logging.getLogger(__name__)
 
@@ -112,6 +113,11 @@ def statement_audio(statement_id: str, session: Session = Depends(get_session)):
     path = (config.data_dir() / st.audio_path).resolve()
     if not path.is_relative_to(audio_dir) or not path.is_file():
         raise service.NotFound(f"The recording for statement {statement_id} is missing.")
+    if path.suffix == ".caf":
+        try:
+            path = audio.browser_copy(path)
+        except stt.STTError as exc:
+            log.warning("Serving %s as CAF: %s", path.name, exc)  # Safari can still play the original
     return FileResponse(path, media_type=_AUDIO_TYPES.get(path.suffix, "application/octet-stream"))
 
 

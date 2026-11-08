@@ -9,7 +9,9 @@ import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { terminal } from "spectrum-ts/providers/terminal";
 
-import { type BridgeConfig, handle, parseSenderMap } from "./handle.ts";
+import { type BridgeConfig, type SendTo, deliverNotices, handle, parseSenderMap } from "./handle.ts";
+
+const NOTICE_POLL_MS = 4000;
 
 try {
   process.loadEnvFile(".env"); // keeps variables already set in the shell
@@ -28,9 +30,10 @@ const cfg: BridgeConfig = {
   fixedPhone: cloud ? undefined : (process.env.TERMINAL_SENDER_PHONE ?? "+15550100001"),
 };
 
-const app = cloud
+const iMessageApp = cloud
   ? await Spectrum({ projectId: projectId!, projectSecret: projectSecret!, providers: [imessage.config()] })
-  : await Spectrum({ providers: [terminal.config()] });
+  : null;
+const app = iMessageApp ?? (await Spectrum({ providers: [terminal.config()] }));
 
 console.log(`[bridge] ${cloud ? "iMessage" : `terminal (as ${cfg.fixedPhone})`} → ${cfg.backendUrl}`);
 
@@ -38,6 +41,15 @@ process.on("SIGINT", async () => {
   await app.stop();
   process.exit(0);
 });
+
+if (iMessageApp) {
+  const line = imessage(iMessageApp);
+  const sendTo: SendTo = async (senderId, text) => {
+    const space = await line.space.create(await line.user(senderId));
+    await space.send(text);
+  };
+  setInterval(() => void deliverNotices(cfg, sendTo), NOTICE_POLL_MS);
+}
 
 for await (const [space, message] of app.messages) {
   try {

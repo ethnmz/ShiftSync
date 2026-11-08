@@ -21,6 +21,14 @@ interface Bubbles {
   followups?: string[];
 }
 
+interface Notice {
+  phone: string;
+  text: string;
+}
+
+/** Starts or continues a conversation with one iMessage sender id. */
+export type SendTo = (senderId: string, text: string) => Promise<void>;
+
 export const UNREACHABLE = "⚠️ ShiftSync is unreachable. Please hand off in person.";
 export const UNSUPPORTED = "I can log a text or a voice note 🎙️";
 const FAILED = "⚠️ Couldn't log that. Try again or use the web app.";
@@ -80,6 +88,35 @@ export async function handle(space: Space, message: Message, cfg: BridgeConfig):
     if (bubbles.reply) await message.reply(bubbles.reply);
     for (const text of bubbles.followups ?? []) await space.send(text);
   });
+}
+
+/**
+ * Text each incoming operator the backend says has a new handoff. Never throws.
+ * The backend returns a notice only once, so a missed one falls back to them texting first.
+ */
+export async function deliverNotices(cfg: BridgeConfig, sendTo: SendTo): Promise<void> {
+  let notices: Notice[];
+  try {
+    const res = await (cfg.fetch ?? fetch)(`${cfg.backendUrl}/api/inbound/imessage/notices`, { method: "POST" });
+    if (!res.ok) return;
+    notices = ((await res.json()) as { notices?: Notice[] }).notices ?? [];
+  } catch {
+    return; // backend down: an inbound message reports that, so polling stays quiet
+  }
+  const senderIds = new Map([...cfg.senderMap].map(([id, phone]) => [phone, id]));
+  for (const notice of notices) {
+    const id = senderIds.get(notice.phone);
+    if (!id) {
+      console.log("[bridge] notice skipped: incoming operator isn't in SENDER_MAP");
+      continue;
+    }
+    try {
+      await sendTo(id, notice.text);
+      console.log("[bridge] notice sent");
+    } catch (err) {
+      console.error(`[bridge] notice failed: ${(err as Error).name}`); // no number or text in the log
+    }
+  }
 }
 
 /** The backend's bubbles, or one bubble that says what went wrong. Never throws. */

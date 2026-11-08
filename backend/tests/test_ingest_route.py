@@ -4,6 +4,8 @@ Speech-to-text is a fake and extraction is scripted; the handoff service, error
 mapping in main.py and the database (in-memory SQLite) are real.
 """
 
+import subprocess
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -16,6 +18,7 @@ from app.handoff.analyzer import Extraction, ScriptedAnalyzer
 from app.main import create_app
 from app.models import Handoff, Statement
 from app.routes import ingest
+from app.stt import audio as stt_audio
 
 MAYA = {"X-User": "maya"}  # outgoing
 JORDAN = {"X-User": "jordan"}  # incoming
@@ -206,6 +209,51 @@ def test_audio_url_plays_the_original_recording(api):
     assert r.status_code == 200
     assert r.content == b"fake webm bytes"
     assert r.headers["content-type"] == "audio/webm"
+
+
+def caf_statement(api) -> tuple[Path, str]:
+    """A statement whose recording is an iMessage CAF, as the bridge saves it."""
+    api.audio_dir.mkdir(parents=True, exist_ok=True)
+    (api.audio_dir / "note.caf").write_bytes(b"original caf bytes")
+    with Session(db.get_engine()) as s:
+        s.add(Statement(id="S-0901", handoff_id=api.hid, speaker_id="maya", source="imessage_voice", role="handoff",
+                        text="x", audio_path="audio/note.caf", at=clock.now()))
+        s.commit()
+    return api.audio_dir / "note.caf", "/api/statements/S-0901/audio"
+
+
+def fake_ffmpeg(monkeypatch, *, returncode=0) -> list:
+    calls: list = []
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        if returncode == 0:
+            Path(cmd[-1]).write_bytes(b"converted m4a bytes")
+        return subprocess.CompletedProcess(cmd, returncode, b"", b"bad input")
+
+    monkeypatch.setattr(stt_audio.shutil, "which", lambda name: "/usr/bin/ffmpeg")
+    monkeypatch.setattr(stt_audio.subprocess, "run", run)
+    return calls
+
+
+def test_imessage_recording_is_converted_once_and_kept(api, monkeypatch):
+    original, url = caf_statement(api)
+    calls = fake_ffmpeg(monkeypatch)
+    for _ in range(2):
+        r = api.client.get(url)
+        assert r.status_code == 200 and r.content == b"converted m4a bytes"
+        assert r.headers["content-type"] == "audio/mp4"
+    assert len(calls) == 1  # the second request uses the cached copy
+    assert original.read_bytes() == b"original caf bytes"
+
+
+def test_failed_conversion_serves_the_original(api, monkeypatch):
+    _, url = caf_statement(api)
+    fake_ffmpeg(monkeypatch, returncode=1)
+    r = api.client.get(url)
+    assert r.status_code == 200 and r.content == b"original caf bytes"
+    assert r.headers["content-type"] == "audio/x-caf"
+    assert not list(api.audio_dir.glob("*.m4a"))  # a failed conversion is never cached
 
 
 def test_text_statement_has_no_audio(api):
