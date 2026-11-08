@@ -380,3 +380,16 @@ def test_asset_the_speaker_never_named_is_ignored(env):
     d = client.get(f"/api/handoffs/{hid}").json()
     assert _item(d, asset="UPS-B")
     assert not [it for it in d["items"] if "UTIL-C" in it["asset_ids"]]  # never attached to unnamed equipment
+
+
+def test_unknown_certainty_keeps_an_unknown_value(env):
+    """Live Lightning returned work_status=incomplete for "I honestly don't know if they finished"."""
+    client, analyzer = env
+    clock.set_now(STEP[1]["at"])
+    hid = client.post("/api/handoffs", json={"outgoing_id": "maya", "incoming_id": "jordan"},
+                      headers=H("maya")).json()["id"]
+    analyzer.push(Extraction(items=[EI(kind="inspection", title="Chiller 2 inspection", asset_id="CHL-2", facts=[
+        EF("work_status", "incomplete", "confirmed", "I honestly don't know if they finished", "incomplete")])]))
+    _say(hid, "Chiller 2 was inspected. I honestly don't know if they finished.", analyzer)
+    ws = _fact(_item(client.get(f"/api/handoffs/{hid}").json(), asset="CHL-2"), "work_status")
+    assert ws["certainty"] == "unknown" and ws["normalized"] == "unknown"

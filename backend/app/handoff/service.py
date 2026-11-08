@@ -400,6 +400,12 @@ def _add_fact(session: Session, h: Handoff, stmt: Statement, item: Item, ef: Any
         return
     proposed = ef.certainty if ef.certainty in CERTAINTIES else "unverified"
     certainty, reason = floor_certainty(proposed, quote)
+    if certainty == "unknown" and normalized and normalized != "unknown" and \
+            "unknown" in config.kind_slots(item.kind).get(slot, {}).get("values", []):
+        # "I don't know if they finished" can't be recorded as work_status=incomplete:
+        # an unknown fact keeps an unknown value.
+        audit(session, "normalized_unknown", handoff_id=h.id, item_id=item.id, slot=slot, proposed=normalized)
+        normalized = "unknown"
     fact = Fact(id=next_id(session, Fact), item_id=item.id, slot=slot, value=ef.value, normalized=normalized,
                 certainty=certainty, certainty_reason=reason or "operator stated", review_state="ai_extracted",
                 source_statement_id=stmt.id, quote=quote)
