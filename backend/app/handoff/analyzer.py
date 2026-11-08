@@ -62,11 +62,38 @@ class Extraction:
     unscoped_claims: list[str] = field(default_factory=list)
 
 
+@dataclass
+class Grade:
+    """Mirror of app.schemas.GradeResult."""
+    verdict: str
+    conveyed_fact_ids: list[str] = field(default_factory=list)
+    missing_fact_ids: list[str] = field(default_factory=list)
+    contradictions: list[dict[str, Any]] = field(default_factory=list)
+    misconception: str | None = None
+    feedback: str | None = None
+
+
 class Analyzer(Protocol):
     async def extract(self, *, text: str, speaker: dict[str, Any], existing_items: list[dict[str, Any]],
                       scope: dict[str, Any] | None) -> Any: ...
 
     async def phrase_question(self, *, gap: dict[str, Any], item: dict[str, Any]) -> tuple[str, str]: ...
+
+    async def brief(self, *, items: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]] | None: ...
+
+    async def verify_question(self, *, item: dict[str, Any], answer_key: dict[str, Any]) -> str | None: ...
+
+    async def grade(self, *, question: str, answer_key: dict[str, Any], answer: str) -> Any: ...
+
+
+def _prompt(name: str) -> str:
+    return (config.BACKEND_DIR / "app" / "prompts" / f"{name}.md").read_text(encoding="utf-8")
+
+
+async def _complete(task: str, prompt: str, user: str, schema_name: str) -> Any:
+    client = importlib.import_module("app.llm.client")
+    schemas = importlib.import_module("app.schemas")
+    return await client.complete_json(task, _prompt(prompt), user, getattr(schemas, schema_name))
 
 
 # ---------- Deterministic helpers ----------
@@ -130,19 +157,42 @@ class DefaultAnalyzer:
 
     async def phrase_question(self, *, gap, item):
         try:
-            client = importlib.import_module("app.llm.client")
-            schemas = importlib.import_module("app.schemas")
-            prompt_path = config.BACKEND_DIR / "app" / "prompts" / "clarify.md"
-            system = prompt_path.read_text(encoding="utf-8")
             user = (f"GAP: {gap['gap_type']} on slots {gap['slots']} ({gap.get('reason', '')})\n"
                     f"ITEM: {item['title']} ({item['kind']})\n"
                     f"FACTS: {item.get('facts', [])}\n"
                     f"SHIFT A'S WORDS: {item.get('quotes', [])}")
-            out = await client.complete_json("clarify", system, user, schemas.ClarificationText)
+            out = await _complete("clarify", "clarify", user, "ClarificationText")
             return out.text, out.why_asked
         except Exception as e:  # missing module, provider down, invalid JSON twice
             log.info("clarify phrasing fell back to template: %s", e)
             return template_question(gap, item)
+
+    async def brief(self, *, items):
+        """(headline, lines) from the LLM, or None → caller uses the template."""
+        try:
+            out = await _complete("brief", "brief", f"REVIEWED ITEMS (in order): {items}", "BriefingText")
+            return out.headline, [dict(line) for line in out.lines]
+        except Exception as e:
+            log.info("briefing fell back to template: %s", e)
+            return None
+
+    async def verify_question(self, *, item, answer_key):
+        try:
+            out = await _complete("verify_question", "verify_question",
+                                  f"ITEM: {item}\nANSWER KEY: {answer_key}", "VerificationQuestionText")
+            return out.text
+        except Exception as e:
+            log.info("verification question fell back to template: %s", e)
+            return None
+
+    async def grade(self, *, question, answer_key, answer):
+        """GradeResult. Failure → AnalysisError (no attempt is recorded)."""
+        try:
+            return await _complete("grade", "grade",
+                                   f"QUESTION: {question}\nANSWER KEY: {answer_key}\nANSWER: {answer}", "GradeResult")
+        except Exception as e:
+            log.warning("grading failed: %s", e)
+            raise AnalysisError("Couldn't check that answer. Try again.") from e
 
 
 # ---------- Scripted analyzer (tests, offline demo) ----------
@@ -152,10 +202,26 @@ class ScriptedAnalyzer:
 
     def __init__(self, extractions: list[Extraction] | None = None):
         self.queue = list(extractions or [])
+        self.grades: list[Grade] = []
         self.calls: list[dict[str, Any]] = []
 
     def push(self, extraction: Extraction) -> None:
         self.queue.append(extraction)
+
+    def push_grade(self, grade: Grade) -> None:
+        self.grades.append(grade)
+
+    async def brief(self, *, items):
+        return None
+
+    async def verify_question(self, *, item, answer_key):
+        return None
+
+    async def grade(self, *, question, answer_key, answer):
+        self.calls.append({"grade": answer})
+        if not self.grades:
+            raise AnalysisError("no scripted grade left")
+        return self.grades.pop(0)
 
     async def extract(self, *, text, speaker, existing_items, scope):
         self.calls.append({"text": text, "scope": scope, "existing_items": existing_items})

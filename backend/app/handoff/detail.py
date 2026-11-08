@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from app import clock, config
 from app.followups.rules import counts, owner_label
 from app.handoff.metrics import compute_metrics
-from app.models import Fact, FollowUp, Handoff, Item
+from app.models import Fact, FollowUp, Handoff, Item, VerificationCheck
 
 
 def iso(dt: datetime | None) -> str | None:
@@ -103,6 +103,11 @@ def handoff_detail(session: Session, h: Handoff) -> dict[str, Any]:
                       for q in questions if q.status == "not_asked"],
         "budget": {"used": h.question_budget_used, "max": config.budgets()["clarification_questions"]},
         "followups": [followup_out(fu) for fu in followups],
+        # Check history for the Receive/History screens. The answer key is never included.
+        "checks": [{"id": c.id, "item_id": c.item_id, "question": c.question, "status": c.status,
+                    "attempts": list(c.attempts or [])}
+                   for c in session.exec(select(VerificationCheck).where(VerificationCheck.handoff_id == h.id)
+                                         .order_by(VerificationCheck.id))],
         "status_line": {"submitted_at": iso(h.submitted_at), "acknowledged_at": iso(h.acknowledged_at),
                         "verified_at": iso(h.verified_at), "open_followups": fu_counts["open"],
                         "unassigned_followups": fu_counts["unassigned"]},
