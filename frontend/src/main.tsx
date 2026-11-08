@@ -8,7 +8,11 @@ import { UserProvider } from "./session/user";
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/600.css";
 import "./index.css";
+import { Agentation } from "agentation";
 
+// Agentation feedback toolbar: development only. It sends annotations to the
+// local agentation MCP server that Claude Code runs on port 4747.
+const AGENTATION_ENDPOINT = "http://localhost:4747";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -19,5 +23,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </BrowserRouter>
       </UserProvider>
     </QueryClientProvider>
+    {import.meta.env.DEV && <Agentation endpoint={AGENTATION_ENDPOINT} />}
   </React.StrictMode>,
 );
