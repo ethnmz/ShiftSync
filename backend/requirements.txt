@@ -1,0 +1,5 @@
+# Speech-to-text (backend/app/stt). Other teammates add their own lines.
+openai>=1.40
+PyYAML>=6.0
+pytest>=8.0
+# Optional, only for STT_PROVIDER=local (offline fallback): pip install faster-whisper
