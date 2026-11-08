@@ -6,11 +6,26 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from app.extract import extract_statement
+from app.extract import ExtractionResult, extract_statement
 from app.llm import client
 
 
 class ExtractionTest(unittest.IsolatedAsyncioTestCase):
+    def test_stray_nested_fields_preserve_valid_facts_and_top_level_claims(self):
+        fact = dict(slot="work_status", value="incomplete", quote="Work is incomplete",
+                    certainty="reported", extra_note="ignore me")
+        item = dict(kind="vendor_work", title="UPS-B", is_decision=False,
+                    facts=[fact], unscoped_claims=[])
+        with self.assertLogs("app.extract", level="INFO") as logs:
+            result = ExtractionResult.model_validate_json(json.dumps(
+                {"items": [item], "unscoped_claims": ["everything else looks okay"]}))
+        self.assertEqual(result.items[0].facts[0].value, "incomplete")
+        self.assertEqual(result.unscoped_claims, ["everything else looks okay"])
+        self.assertNotIn("unscoped_claims", result.items[0].model_dump())
+        self.assertNotIn("extra_note", result.items[0].facts[0].model_dump())
+        self.assertTrue(any("unscoped_claims" in line for line in logs.output))
+        self.assertTrue(any("extra_note" in line for line in logs.output))
+
     async def test_retry_preserves_only_supported_ups_fact(self):
         quote = "UPS-B maintenance is mostly finished."
         long_quote = " ".join(["pending"] * 31)
