@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app import db, stt
+from app import clock, db, stt
 from app.demo.seed import reset
 from app.handoff.analyzer import Extraction, ScriptedAnalyzer
 from app.main import create_app
@@ -194,3 +194,41 @@ def test_no_statements_after_submit(api, closed):
 def test_unsupported_content_type(api):
     r = api.client.post(api.url, content=b"hello", headers={**MAYA, "content-type": "text/plain"})
     assert r.status_code == 422 and error_code(r) == "unprocessable"
+
+
+# ---- playback ----
+
+def test_audio_url_plays_the_original_recording(api):
+    api.analyzer.push(Extraction())
+    detail = api.client.post(api.url, files=audio(), headers=MAYA).json()
+    (st,) = detail["statements"]
+    r = api.client.get(st["audio_url"])
+    assert r.status_code == 200
+    assert r.content == b"fake webm bytes"
+    assert r.headers["content-type"] == "audio/webm"
+
+
+def test_text_statement_has_no_audio(api):
+    api.analyzer.push(Extraction())
+    detail = api.client.post(api.url, json={"text": "All good."}, headers=MAYA).json()
+    (st,) = detail["statements"]
+    assert st["audio_url"] is None
+    r = api.client.get(f"/api/statements/{st['id']}/audio")
+    assert r.status_code == 404 and error_code(r) == "not_found"
+
+
+def test_unknown_statement_audio(api):
+    r = api.client.get("/api/statements/S-9999/audio")
+    assert r.status_code == 404 and error_code(r) == "not_found"
+
+
+def test_audio_path_cannot_escape_the_audio_folder(api, tmp_path):
+    secret = tmp_path / "data" / "secret.txt"
+    secret.parent.mkdir(parents=True, exist_ok=True)
+    secret.write_text("not audio")
+    with Session(db.get_engine()) as s:
+        s.add(Statement(id="S-0900", handoff_id=api.hid, speaker_id="maya", source="voice_web", role="handoff",
+                        text="x", audio_path="audio/../secret.txt", at=clock.now()))
+        s.commit()
+    r = api.client.get("/api/statements/S-0900/audio")
+    assert r.status_code == 404

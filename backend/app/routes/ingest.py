@@ -1,4 +1,4 @@
-"""Shift A statement ingest: POST /handoffs/{id}/statements (docs/API.md).
+"""Shift A statement ingest: POST /handoffs/{id}/statements, and GET /statements/{id}/audio (docs/API.md).
 
 Accepts typed text (JSON `{"text", "question_id"?}`) or a recording (multipart
 `file`, optional `question_id`). A recording is saved under data/audio/ and
@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 from sqlmodel import Session
 # Starlette's class: request.form() returns these, and fastapi.UploadFile is a subclass.
 from starlette.datastructures import UploadFile
@@ -26,6 +27,7 @@ from app.handoff import service
 from app.handoff import state as sm
 from app.handoff.analyzer import Analyzer
 from app.handoff.detail import handoff_detail
+from app.models import Statement
 from app.routes.deps import current_user, get_analyzer, get_session
 
 log = logging.getLogger(__name__)
@@ -36,6 +38,9 @@ MAX_AUDIO_BYTES = 25 * 1024 * 1024  # OpenAI's upload limit for transcription
 _CHUNK_BYTES = 1024 * 1024
 _SAFE_SUFFIX = re.compile(r"^\.[a-z0-9]{1,5}$")
 _DEFAULT_SUFFIX = ".webm"  # what browser MediaRecorder produces
+# mimetypes calls .webm video/webm; these are what an <audio> element expects.
+_AUDIO_TYPES = {".webm": "audio/webm", ".ogg": "audio/ogg", ".wav": "audio/wav", ".mp3": "audio/mpeg",
+                ".m4a": "audio/mp4", ".caf": "audio/x-caf"}
 
 
 @router.post("/handoffs/{handoff_id}/statements")
@@ -93,6 +98,23 @@ async def add_statement(
     h = await service.ingest_statement(session, handoff_id, user, text, source=source,
                                        question_id=question_id, audio_path=audio_path, analyzer=analyzer)
     return handoff_detail(session, h)
+
+
+@router.get("/statements/{statement_id}/audio")
+def statement_audio(statement_id: str, session: Session = Depends(get_session)):
+    """The original recording behind a voice statement (HandoffDetail's `audio_url`).
+
+    Assumption: no X-User check here, because a browser <audio src> can't send that
+    header. X-User is a demo selector, not authentication, and audio stays local.
+    """
+    st = session.get(Statement, statement_id)
+    if st is None or not st.audio_path:
+        raise service.NotFound(f"No recording for statement {statement_id}.")
+    audio_dir = (config.data_dir() / "audio").resolve()
+    path = (config.data_dir() / st.audio_path).resolve()
+    if not path.is_relative_to(audio_dir) or not path.is_file():
+        raise service.NotFound(f"The recording for statement {statement_id} is missing.")
+    return FileResponse(path, media_type=_AUDIO_TYPES.get(path.suffix, "application/octet-stream"))
 
 
 def _form_str(value: Any) -> str | None:
