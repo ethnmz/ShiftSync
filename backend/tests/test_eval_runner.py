@@ -117,6 +117,26 @@ def test_grounded_rejects_tiny_quotes():
     assert [f.ok for f in kept] == [False, True] and [d["index"] for d in dropped] == [0]
 
 
+def test_grounded_accepts_joined_or_shortened_real_quotes():
+    artifact = ("UPS-B load test pending [critical]\n  decision: vendor returns at 9 AM (confirmed)\n"
+                "  operational clearance: not_cleared (confirmed)\n\nOpen follow-ups:\n"
+                "- Confirm completion of UPS-B | missing: Completion confirmation | owner: To be assigned")
+    flags = [
+        # Title joined to a fact two lines below it: both pieces are real.
+        Flag(index=0, ok=True, evidence="UPS-B load test pending [critical]\n  operational clearance: not_cleared (confirmed)"),
+        # Middle of a line cut out with "..." (and the unicode ellipsis).
+        Flag(index=1, ok=True, evidence="Open follow-ups: ... owner: To be assigned"),
+        Flag(index=2, ok=True, evidence="Confirm completion of UPS-B \u2026 owner: To be assigned"),
+        # One real piece plus one invented piece: still not grounded.
+        Flag(index=3, ok=True, evidence="operational clearance: not_cleared ... cleared for full load by the vendor"),
+        # Only short pieces: nothing long enough to check.
+        Flag(index=4, ok=True, evidence="UPS-B ... 9 AM"),
+    ]
+    kept, dropped = eval_run._grounded(flags, artifact)
+    assert [f.ok for f in kept] == [True, True, True, False, False]
+    assert [d["index"] for d in dropped] == [3, 4]
+
+
 def test_unavailable_llm_reports_not_run_without_numbers(data_dir, monkeypatch):
     # Never reach a real provider from the test suite, even if backend/.env has a key.
     for var in ("NEMOTRON_MODEL", "CLAUDE_MODEL", "NVIDIA_API_KEY", "ANTHROPIC_API_KEY"):
