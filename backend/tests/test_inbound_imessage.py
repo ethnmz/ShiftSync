@@ -240,6 +240,27 @@ def test_first_text_from_incoming_operator_gets_the_briefing(api):
     assert state(hid) == "submitted"  # reading it is not acknowledging it
 
 
+def ups_line_from_model(api, monkeypatch, line: str) -> None:
+    async def brief(*, items):
+        return "Headline.", [{"item_id": next(i["id"] for i in items if "UPS" in i["title"]), "text": line}]
+
+    monkeypatch.setattr(api.analyzer, "brief", brief)
+
+
+def test_briefing_says_not_cleared_even_if_the_model_leaves_it_out(api, monkeypatch):
+    submitted(api)
+    ups_line_from_model(api, monkeypatch, "UPS-B maintenance incomplete, owner to be assigned")
+    briefing = text(api, "On shift.", phone=JORDAN).json()["followups"][0]
+    assert "not cleared" in briefing and "owner to be assigned" in briefing
+
+
+def test_briefing_keeps_the_models_line_when_it_mentions_clearance(api, monkeypatch):
+    submitted(api)
+    ups_line_from_model(api, monkeypatch, "UPS-B is in bypass and not cleared until the vendor signs off")
+    assert "UPS-B is in bypass and not cleared until the vendor signs off" in \
+        text(api, "On shift.", phone=JORDAN).json()["followups"][0]
+
+
 @pytest.mark.parametrize("message", ["ok", "got it thanks", "acknowledge that the UPS is fine"])
 def test_only_an_explicit_ack_acknowledges(api, message):
     hid = submitted(api)

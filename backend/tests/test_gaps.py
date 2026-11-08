@@ -66,6 +66,55 @@ def test_not_asked_question_does_not_cover(step2):
     assert _by(find_gaps(step2["views"], [q]), ups, "vague_statement")
 
 
+def _clearance(gaps):
+    return [g for g in gaps if "operational_clearance" in g.slots]
+
+
+def _clearance_q(ups, status="answered"):
+    return question(ups, "missing_required", ["operational_clearance"], status=status)
+
+
+def test_safety_answer_that_saved_no_fact_gets_one_more_try(step2):
+    [g] = _clearance(find_gaps(step2["views"], [_clearance_q(step2["ups"])]))
+    assert g.safety and g.gap_type == "missing_required"
+
+
+def test_safety_slot_is_not_asked_a_third_time(step2):
+    ups = step2["ups"]
+    assert not _clearance(find_gaps(step2["views"], [_clearance_q(ups), _clearance_q(ups)]))
+
+
+def test_retry_is_not_added_while_one_is_pending(step2):
+    ups = step2["ups"]
+    assert not _clearance(find_gaps(step2["views"], [_clearance_q(ups), _clearance_q(ups, "pending")]))
+
+
+def test_safety_answer_with_a_saved_fact_is_done(step2):
+    ups = step2["ups"]
+    step2["views"][0].facts.append(make_fact(ups, "operational_clearance", "Not cleared", "confirmed",
+                                             "It is not cleared", normalized="not_cleared", statement_id="S-0002"))
+    assert not _clearance(find_gaps(step2["views"], [_clearance_q(ups)]))
+
+
+def test_safety_answer_filed_under_another_slot_is_not_retried(step2):
+    ups = step2["ups"]
+    q = _clearance_q(ups)
+    q.answer_statement_id = "S-0002"
+    step2["views"][0].facts.append(make_fact(ups, "current_mode", "Maintenance bypass", "confirmed",
+                                             "It's still in maintenance bypass", statement_id="S-0002"))
+    assert not _clearance(find_gaps(step2["views"], [q]))
+
+
+def test_dont_know_on_a_safety_question_is_not_retried(step2):
+    assert not _clearance(find_gaps(step2["views"], [_clearance_q(step2["ups"], "answered_unknown")]))
+
+
+def test_non_safety_answer_that_saved_no_fact_is_not_retried(step2):
+    ups = step2["ups"]
+    q = question(ups, "vague_statement", ["remaining_work", "rationale"], target="work_status")
+    assert not [g for g in find_gaps(step2["views"], [q]) if "rationale" in g.slots]
+
+
 def test_owner_asked_at_most_once(step2):
     ups = step2["ups"]
     q = question(ups, "missing_owner_or_deadline", ["owner"], status="answered_unknown")

@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -214,6 +215,48 @@ def template_question(gap: dict[str, Any], item: dict[str, Any]) -> tuple[str, s
     return text, why
 
 
+# The operator's own words saying it isn't cleared. Code only ever fills in this
+# direction: "cleared" must come from the model's reading and Shift A's review.
+_NOT_CLEARED = re.compile(r"\b(?:not|isn['’]t|hasn['’]t|wasn['’]t|aren['’]t)\s+(?:(?:yet|been|fully)\s+)*cleared\b", re.I)
+_MAX_QUOTE_WORDS = 30
+
+
+def _sentence_around(text: str, match: re.Match[str]) -> str:
+    """The sentence holding `match`, cut to the quote limit if it runs long."""
+    start = max(text.rfind(c, 0, match.start()) for c in ".!?") + 1
+    ends = [i for c in ".!?" if (i := text.find(c, match.end())) != -1]
+    sentence = text[start:min(ends) + 1 if ends else len(text)].strip()
+    words = sentence.split()
+    if len(words) <= _MAX_QUOTE_WORDS:
+        return sentence
+    before = len(sentence[:sentence.find(match.group())].split())
+    first = max(0, before - _MAX_QUOTE_WORDS // 3)
+    return " ".join(words[first:first + _MAX_QUOTE_WORDS])
+
+
+def add_stated_not_cleared(extraction: Any, text: str, existing_items: list[dict[str, Any]],
+                           scope: dict[str, Any] | None) -> Any:
+    """Record "not cleared" when the operator said so in answer to the clearance question.
+
+    Live, the model filed this answer under bypass slots (current_mode, restore_condition)
+    in 3 of 3 runs, even when asked about clearance directly, so the safety fact never
+    existed and the next shift's briefing didn't say it. The quote check and certainty
+    floor still apply, because this goes through the same path as any extracted fact.
+    """
+    if not scope or "operational_clearance" not in (scope.get("slots") or []):
+        return extraction
+    if any(f.slot == "operational_clearance" for item in extraction.items for f in item.facts):
+        return extraction
+    match = _NOT_CLEARED.search(text)
+    item = next((i for i in existing_items if i.get("id") == scope.get("item_id")), None)
+    if match is None or item is None:
+        return extraction
+    extraction.items.append(ExtractedItem(kind=item["kind"], title=item["title"], link_item_id=item["id"], facts=[
+        ExtractedFact(slot="operational_clearance", value="Not cleared", certainty="confirmed",
+                      quote=_sentence_around(text, match), normalized="not_cleared")]))
+    return extraction
+
+
 # ---------- Default (real) analyzer ----------
 
 class DefaultAnalyzer:
@@ -226,9 +269,10 @@ class DefaultAnalyzer:
         try:
             if hasattr(mod, "extract"):
                 # Akshi's signature: extract(statement, *, assets, kinds, roster, speaker, existing_items, scope)
-                return await mod.extract(text, assets=config.load_yaml("assets")["assets"],
-                                         kinds=config.slots()["kinds"], roster=_roster_for_llm(),
-                                         speaker=speaker, existing_items=existing_items, scope=scope)
+                result = await mod.extract(text, assets=config.load_yaml("assets")["assets"],
+                                           kinds=config.slots()["kinds"], roster=_roster_for_llm(),
+                                           speaker=speaker, existing_items=existing_items, scope=scope)
+                return add_stated_not_cleared(result, text, existing_items, scope)
             if hasattr(mod, "extract_statement"):
                 return await mod.extract_statement(text=text, speaker=speaker, existing_items=existing_items,
                                                    scope=scope)
@@ -240,6 +284,10 @@ class DefaultAnalyzer:
     async def phrase_question(self, *, gap, item):
         try:
             catalog = config.kind_slots(item["kind"])
+            # A safety question must ask exactly what code chose. Live, the model has
+            # reworded a clearance question into a different one, and the answer was lost.
+            if all(catalog.get(s, {}).get("safety") for s in gap["slots"]):
+                return template_question(gap, item)
             # What each asked slot means (slots.yaml hints), so the question stays on the
             # slots code chose and doesn't drift back to the operator's vague words.
             gap = {**gap, "ASK ONLY ABOUT": {s: catalog.get(s, {}).get("hint") or s.replace("_", " ")

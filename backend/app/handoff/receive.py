@@ -78,6 +78,11 @@ def _line_certainty(view: ItemView) -> str:
     return min((f.certainty for f in view.facts), key=_LOWEST.index)
 
 
+def _omits_clearance(text: str, view: ItemView) -> bool:
+    """True if a reworded line leaves out that the equipment isn't confirmed cleared."""
+    return view.value("operational_clearance") in ("not_cleared", "unknown") and "clear" not in text.lower()
+
+
 async def build_briefing(session: Session, handoff_id: str, viewer_id: str | None = None,
                          analyzer: Analyzer | None = None) -> dict[str, Any]:
     h = get_handoff(session, handoff_id)
@@ -114,7 +119,9 @@ async def build_briefing(session: Session, handoff_id: str, viewer_id: str | Non
         by_item = {line.get("item_id"): line for line in llm_lines if line.get("item_id") in templates}
         for line in lines:
             cand = by_item.get(line["item_id"])
-            if cand and cand.get("text") and not language.violations(cand["text"], [by_id[line["item_id"]]]):
+            view = by_id[line["item_id"]]
+            if cand and cand.get("text") and not language.violations(cand["text"], [view]) \
+                    and not _omits_clearance(cand["text"], view):
                 line["text"] = cand["text"]
         if llm_headline and not language.violations(llm_headline, shown):
             headline = llm_headline
