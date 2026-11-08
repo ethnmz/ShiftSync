@@ -16,7 +16,7 @@ import importlib
 import json
 from typing import Any, Protocol
 
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 from app import config
 
@@ -43,11 +43,19 @@ class ReaderOut(BaseModel):
 class Flag(BaseModel):
     index: int
     ok: bool
+    why: str = ""        # one short reason, kept in the results so a person can spot-check
 
 
 class ReaderGrade(BaseModel):
     index: int
-    correct: bool        # conveys must_convey and claims nothing in must_not_claim
+    # conveys must_convey and claims nothing in must_not_claim (models sometimes call it "ok")
+    correct: bool = Field(validation_alias=AliasChoices("correct", "ok"))
+    why: str = ""
+
+
+class Incorrect(BaseModel):
+    statement: str       # quoted from the artifact
+    why: str             # which ground-truth fact it contradicts, or "no source"
 
 
 class JudgeOut(BaseModel):
@@ -56,7 +64,7 @@ class JudgeOut(BaseModel):
     unknowns_preserved: list[Flag]      # gt unknown/unverified facts shown as such
     missing_detected: list[Flag]        # missing_in_notes: asked about, or shown as unknown / to be assigned
     reader_grades: list[ReaderGrade]
-    incorrect_statements: list[str]     # contradict ground truth or unsupported by any source
+    incorrect_statements: list[Incorrect]  # contradict ground truth or unsupported by any source
 
 
 # ---------- Prompts ----------
@@ -74,19 +82,23 @@ OPERATOR_PROMPT = (
     "answer \"I don't know\". Return ONLY JSON: {\"answer\": str, \"dont_know\": bool}.")
 JUDGE_PROMPT = (
     "You grade a shift-handoff ARTIFACT (what the incoming operator reads) against GROUND TRUTH.\n"
-    "Be strict and literal. For each list, return one entry per indexed input:\n"
-    "- critical_facts: ok only if the fact is present AND shown with the same certainty (an unverified\n"
-    "  claim shown as fact is NOT ok).\n"
-    "- ambiguous_resolved: ok if the phrase's meaning is resolved by a confirmed statement, or the\n"
-    "  artifact explicitly marks it unverified/unknown. Passing it through unchanged is NOT ok.\n"
-    "- unknowns_preserved: ok if that unknown/unverified fact is shown as unknown/unverified, never as\n"
+    "Grade MEANING, not wording: a fact counts when a reader could understand it from the artifact in\n"
+    "any wording, including field-style lines such as 'operational clearance: not_cleared (confirmed)'.\n"
+    "Return one entry per indexed input in each list, each with a short `why` (at most 15 words):\n"
+    "- critical_facts: ok when the fact's meaning is present AND it is not shown as MORE certain than the\n"
+    "  ground truth (an unverified claim shown as fact is NOT ok). Showing it as less certain is ok.\n"
+    "- ambiguous_resolved: ok when the phrase's real meaning is stated by a confirmed fact, OR the\n"
+    "  artifact explicitly labels it unverified/unknown/reported. Repeating it unlabelled is NOT ok.\n"
+    "- unknowns_preserved: ok when that unknown/unverified fact is labelled unknown/unverified, never\n"
     "  complete/confirmed.\n"
-    "- missing_detected: ok if the artifact or its QUESTIONS ASKED cover that missing detail, or the\n"
-    "  artifact shows it as unknown / to be assigned.\n"
-    "- reader_grades: correct if the READER ANSWER conveys every must_convey point and claims nothing in\n"
+    "- missing_detected: ok when the artifact or QUESTIONS ASKED cover that detail, or the artifact shows\n"
+    "  it as unknown / to be assigned.\n"
+    "- reader_grades: correct when the READER ANSWER conveys every must_convey point and claims nothing in\n"
     "  must_not_claim.\n"
-    "- incorrect_statements: quote each artifact statement that contradicts ground truth or is not\n"
-    "  supported by the NOTES or OPERATOR ANSWERS (invented owners, deadlines, completion, clearance).\n"
+    "- incorrect_statements: ONLY statements that are FALSE per ground truth, or that state an owner,\n"
+    "  deadline, completion or clearance with no support in NOTES or OPERATOR ANSWERS. Do NOT list:\n"
+    "  correct or merely repetitive statements, statements correctly labelled unverified/unknown/reported,\n"
+    "  or general safety disclaimers. Quote each one and say which fact it contradicts or 'no source'.\n"
     "Return ONLY JSON matching the schema.")
 
 
