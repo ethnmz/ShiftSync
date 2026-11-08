@@ -12,9 +12,9 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 ## Shift A: create, clarify, review, submit
 - `POST /handoffs/{id}/statements` (multipart `file` audio **or** JSON `{ "text": "..." }`, optional `question_id`) → transcribes, analyzes, recomputes gaps → `HandoffDetail`
 - `POST /handoffs/{id}/questions/{qid}/answer` `{ "text": "..." }` or `{ "dont_know": true }` → `HandoffDetail`
-- `PATCH /facts/{fid}` `{ "value"?, "normalized"?, "certainty"?, "review_state": "operator_confirmed|operator_edited|operator_rejected" }`. Note: certainty can only be **raised** if `text` (a new operator statement) is included; it's stored as a `review_edit` statement.
-- `POST /handoffs/{id}/review/confirm-routine` → confirms all non-critical AI facts
-- `POST /handoffs/{id}/submit` → 409 with `blockers` if critical facts are unreviewed or required questions are pending
+- `PATCH /facts/{fid}` `{ "value"?, "normalized"?, "certainty"?, "review_state": "operator_confirmed|operator_edited|operator_rejected" }` → `HandoffDetail`. Note: certainty can only be **raised** if `text` (a new operator statement) is included; it's stored as a `review_edit` statement.
+- `POST /handoffs/{id}/review/confirm-routine` → confirms all non-critical AI facts → `HandoffDetail`
+- `POST /handoffs/{id}/submit` → `HandoffDetail`, or 409 `{ "blockers": [Blocker] }` if critical facts are unreviewed or safety questions are pending
 
 ## Shift B: receive, acknowledge, verify
 - `GET /handoffs/{id}/briefing` → `Briefing`
@@ -25,8 +25,8 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 
 ## Follow-ups
 - `GET /followups?status=open` (Supervisor, Shift B)
-- `PATCH /followups/{id}` `{ "owner_id", "deadline" }` (lead/supervisor only; logged)
-- `POST /followups/{id}/close` `{ "text": "Vendor emailed completion report at 09:40" }` (creates a closure statement)
+- `PATCH /followups/{id}` `{ "owner_id", "deadline" }` (lead/supervisor only; logged) → `HandoffDetail` of the follow-up's handoff
+- `POST /followups/{id}/close` `{ "text": "Vendor emailed completion report at 09:40" }` (creates a closure statement) → `HandoffDetail`
 
 ## Shapes
 ```jsonc
@@ -43,14 +43,26 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
   "status_line": { "submitted_at": null, "acknowledged_at": null, "verified_at": null, "open_followups": 2, "unassigned_followups": 1 },
   "metrics": { … }
 }
-// Item
+// Item. carried_over_from is null unless the item came from an earlier handoff.
 { "id":"I-1","title":"UPS-B maintenance","kind":"vendor_work","asset_ids":["UPS-B"],"priority":"critical","is_decision":false,"open":true,
+  "carried_over_from": null,   // or { "handoff_id":"H-0006","item_id":"I-0002","handoff_created_at":"2026-11-07T12:30:00Z" }
   "facts":[ { "id":"F-3","slot":"operational_clearance","value":"Not cleared: in maintenance bypass","normalized":"not_cleared",
               "certainty":"confirmed","certainty_reason":"operator stated","review_state":"ai_extracted",
-              "quote":"No, it's still in maintenance bypass.","source_statement_id":"S-3","history":[] } ] }
-// FollowUp
+              "quote":"No, it's still in maintenance bypass.","source_statement_id":"S-3",
+              "ai_proposed_value":null,   // set only when an operator edited the AI value
+              "history":[] } ] }          // prior versions, oldest first:
+              // { "value","normalized","certainty","review_state","quote","source_statement_id","at" }
+// certainty_reason values: hedge:"<term>", uncertainty:"<term>", observation:"<term>" (term is underlinable),
+// or no_quote, operator stated, operator lowered.
+// FollowUp. owner/assigned_by are {id, name} or null; owner_label is always a display string.
 { "id":"FU-2","item_id":"I-3","description":"Confirm what the Chiller 2 cooling inspection found / whether it was completed",
-  "missing_information":"Vendor inspection report","owner":null,"owner_label":"To be assigned","deadline":null,"status":"open" }
+  "missing_information":"Vendor inspection report","owner":null,"owner_label":"To be assigned","deadline":null,
+  "assigned_by":null,"assigned_at":null,"status":"open" }
+// once assigned: "owner":{"id":"jordan","name":"Jordan Blake"},"owner_label":"Jordan Blake",
+//   "assigned_by":{"id":"jordan","name":"Jordan Blake"},"assigned_at":"2026-11-08T13:01:00Z"
+// Blocker (409 from submit). message is display-ready.
+{ "code":"unreviewed_critical_fact","message":"Review work status on UPS-B maintenance","item_id":"I-1","fact_id":"F-1" }
+{ "code":"pending_safety_question","message":"Answer the pending safety question (\"I don't know\" is allowed)","item_id":"I-1","question_id":"Q-2" }
 // Briefing
 { "headline":"…", "lines":[ { "text":"…","item_id":"I-1","fact_ids":["F-3"],"certainty":"confirmed" } ],
   "items":[ Item ], "open_followups":[ FollowUp ], "disclaimer":"Acknowledging this handoff does not close open issues or confirm equipment is safe to operate." }
