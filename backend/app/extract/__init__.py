@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..certainty.quotes import supported_quote
 from ..llm.client import complete_json
@@ -17,7 +17,19 @@ class Candidate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
 
 
-class FactOut(Candidate):
+class NestedCandidate(Candidate):
+    @model_validator(mode="before")
+    @classmethod
+    def drop_unknown_fields(cls, data):
+        if isinstance(data, dict):
+            unknown = data.keys() - cls.model_fields.keys()
+            if unknown:
+                logger.info("Dropped unknown %s fields: %s", cls.__name__, sorted(unknown))
+                return {key: value for key, value in data.items() if key not in unknown}
+        return data
+
+
+class FactOut(NestedCandidate):
     slot: str
     value: str = Field(min_length=1)
     normalized: str | None = None
@@ -27,7 +39,7 @@ class FactOut(Candidate):
     deadline_text: str | None = None
 
 
-class ItemOut(Candidate):
+class ItemOut(NestedCandidate):
     link_item_id: str | None = None
     kind: str
     asset_mention: str | None = None
