@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
-import { Button, Notice, Spinner } from "./ui";
+import { Button, fieldClass, Notice, Spinner } from "./ui";
 import { LevelMeter, RECORDER_ERROR_TEXT, formatTime, useRecorder } from "../hooks/useRecorder";
 
 // One open-ended question with a text box and an optional voice answer.
@@ -96,7 +96,7 @@ export default function QuestionCard({
             onKeyDown={onKey}
             disabled={sending || disabled}
             placeholder={placeholder}
-            className="block w-full resize-y rounded-lg border border-line-strong bg-surface p-3 text-base placeholder:text-faint disabled:opacity-60"
+            className={`${fieldClass} block resize-y py-3`}
           />
         )}
         {rec.error && rec.error !== "unsupported" && (

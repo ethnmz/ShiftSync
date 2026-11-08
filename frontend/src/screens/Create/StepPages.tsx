@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { FIXTURE_MODE, SubmitBlockedError, answerQuestion, confirmRoutine, errorMessage, patchFact, submitHandoff, type AnswerInput } from "../../api/client";
+import { FIXTURE_MODE, SubmitBlockedError, answerQuestion, isAnalysisFailed, isTranscriptionFailed, confirmRoutine, errorMessage, patchFact, submitHandoff, type AnswerInput } from "../../api/client";
 import type { Blocker, FactPatch, HandoffDetail, Statement } from "../../api/types";
 import FactRow from "../../components/FactRow";
 import Transcript, { TranscriptHeader } from "../../components/Transcript";
@@ -12,6 +12,7 @@ import { PageWidth, suggestedStep, useFlow, useHandoffQuery } from "./CreateFlow
 import { ClarifyPanel, ItemSummary, NotAskedList, QAHistory, focusFor } from "./ClarifyStage";
 import ReviewStage from "./ReviewStage";
 import Workspace, { TabBar } from "../../components/Workspace";
+import SourceCheck from "../../components/mascots/SourceCheck";
 
 function useLoaded() {
   const { id } = useParams();
@@ -76,6 +77,8 @@ export function ClarifyPage() {
       qc.setQueryData(["handoff", id], d);
       if (!d.questions.some((x) => x.status === "pending")) navigate(`/create/${id}/review`);
     },
+    // A failed analysis still stored the answer: refetch so it shows.
+    onError: () => qc.invalidateQueries({ queryKey: ["handoff", id] }),
   });
   if (!q.data) return <Loading q={q} />;
   if (!isEditable(q.data.state)) return <Navigate to={`/create/${id}/review`} replace />;
@@ -125,7 +128,18 @@ export function ClarifyPage() {
           <ClarifyPanel
             handoff={h}
             sending={answer.isPending}
-            error={answer.isError ? errorMessage(answer.error, "Couldn't save the answer. Try again.") : null}
+            error={
+              answer.isError
+                ? {
+                    title: isAnalysisFailed(answer.error)
+                      ? "Your answer is saved, but ShiftSync couldn't analyze it"
+                      : isTranscriptionFailed(answer.error)
+                        ? "The recording is saved, but it couldn't be transcribed"
+                        : "The answer wasn't saved",
+                    text: errorMessage(answer.error, "Couldn't save the answer. Try again."),
+                  }
+                : null
+            }
             onAnswer={(qid, input) => answer.mutate({ qid, input })}
             onContinue={() => navigate(`/create/${id}/review`)}
           />
@@ -267,7 +281,7 @@ export function ReviewPage() {
                 />
               </ul>
               <div className="border-t border-line pt-5">
-                <p className="mb-4 text-sm text-muted">Where it came from</p>
+                <SourceCheck quote={fact.quote} source={source[0]?.text} />
                 <Transcript statements={source} facts={facts} questions={h.questions} selectedFact={fact} />
               </div>
             </div>

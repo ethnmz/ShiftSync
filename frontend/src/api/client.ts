@@ -1,6 +1,10 @@
 import type {
   Blocker,
   Briefing,
+  DemoScenario,
+  EvalResults,
+  SupervisorSummary,
+  DemoStep,
   FactPatch,
   FollowUp,
   Handoff,
@@ -208,8 +212,77 @@ export function closeFollowup(id: string, text: string): Promise<unknown> {
   return request(`/followups/${id}/close`, json({ text }));
 }
 
+// 422 analysis_failed: the statement was saved, but the model step didn't
+// run (docs/API.md). Resending would store it twice.
+export const isAnalysisFailed = (e: unknown) => e instanceof ApiError && e.code === "analysis_failed";
+// 422 transcription_failed: the audio was saved but couldn't be transcribed.
+export const isTranscriptionFailed = (e: unknown) => e instanceof ApiError && e.code === "transcription_failed";
+
 export function errorMessage(e: unknown, fallback: string) {
   return e instanceof ApiError && e.status !== 409 ? e.message : fallback;
+}
+
+// ---- Supervisor and Evaluation (P1) ---------------------------------------
+
+export function getSupervisorSummary(): Promise<SupervisorSummary> {
+  if (!LIVE) return delay(simSupervisorSummary, 200);
+  return request("/supervisor/summary");
+}
+
+// Offline: derived from the browser sim with the same rules the screen shows.
+function simSupervisorSummary(): SupervisorSummary {
+  const rows = sim.simList();
+  const done = ["verified", "verified_with_assistance"];
+  const followups = sim.simListFollowups("open");
+  const now = Date.now();
+  const detail = rows.map((r) => sim.simGet(r.id));
+  return {
+    pending_handoffs: rows.filter((r) => !done.includes(r.state)),
+    completed_today: rows.filter((r) => done.includes(r.state)),
+    unresolved_questions: detail.reduce((n, h) => n + h.questions.filter((q) => q.status === "pending").length, 0),
+    outstanding_acknowledgments: rows.filter((r) => r.state === "submitted"),
+    verification: {
+      verified: rows.filter((r) => r.state === "verified").length,
+      with_assistance: rows.filter((r) => r.state === "verified_with_assistance").length,
+      in_progress: rows.filter((r) => r.state === "verifying").length,
+    },
+    followups: {
+      open: followups.length,
+      unassigned: followups.filter((f) => !f.owner).length,
+      overdue: followups.filter((f) => f.deadline && new Date(f.deadline).getTime() < now).length,
+    },
+  };
+}
+
+export function getEvalResults(): Promise<EvalResults> {
+  if (!LIVE)
+    return delay(
+      () => ({ status: "not_run" as const, reason: "Offline mode: the benchmark runs on the backend. Start it and use VITE_API_MODE=live.", scenarios: {} }),
+      150,
+    );
+  return request("/eval/results");
+}
+
+export function runEval(runs = 3): Promise<{ status: string }> {
+  if (!LIVE) return Promise.reject(new ApiError("The benchmark runs on the backend (live mode).", 0));
+  return request("/eval/run", json({ runs }));
+}
+
+// ---- Demo control (live mode only) ---------------------------------------
+// Replays demo/scenario.json through the real backend (docs/API.md). Each step
+// acts as the scenario's actor, so no X-User is needed. offline=true uses the
+// backend's fixed AI outputs; false calls the configured model.
+
+export function demoReset(): Promise<{ ok: boolean; now: string }> {
+  return request("/demo/reset", { method: "POST" });
+}
+
+export function demoScenario(): Promise<DemoScenario> {
+  return request("/demo/scenario");
+}
+
+export function demoStep(n: number, offline = true): Promise<DemoStep> {
+  return request(`/demo/step/${n}?offline=${offline}`, { method: "POST" });
 }
 
 // Offline demo only: replays demo/scenario.json steps 1-6 so Receive has a

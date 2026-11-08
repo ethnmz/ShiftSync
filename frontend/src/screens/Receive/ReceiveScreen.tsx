@@ -14,6 +14,8 @@ import { byPriority, isEditable } from "../../review";
 import { useUser } from "../../session/user";
 import FollowUps from "./FollowUps";
 import UnderstandingCheck from "./UnderstandingCheck";
+import SourceCheck from "../../components/mascots/SourceCheck";
+import { AiByline } from "../../components/mascots/Flat";
 
 function BriefingRow({ line, onSelect }: { line: BriefingLine; onSelect: (factId: string) => void }) {
   return (
@@ -242,7 +244,10 @@ export default function ReceiveScreen() {
                       {errorMessage(briefingQ.error, "Couldn't load the briefing.")}
                     </Notice>
                   ) : (
-                    <h2 className="text-2xl font-semibold leading-snug">{briefing?.headline}</h2>
+                    <div className="flex flex-col gap-2">
+                      <AiByline kind="nimbus" />
+                      <h2 className="text-2xl font-semibold leading-snug">{briefing?.headline}</h2>
+                    </div>
                   )}
                   {briefing && (
                     <ul className="flex flex-col divide-y divide-line">
@@ -296,7 +301,7 @@ export default function ReceiveScreen() {
                 <FactRow fact={fact} itemTitle={factItem.title} editable={false} busy={false} />
               </ul>
               <div className="border-t border-line pt-5">
-                <p className="mb-4 text-sm text-muted">Where it came from</p>
+                <SourceCheck quote={fact.quote} source={handoff.statements.find((x) => x.id === fact.source_statement_id)?.text} />
                 <Transcript statements={handoff.statements.filter((x) => x.id === fact.source_statement_id)} facts={facts} questions={handoff.questions} selectedFact={fact} />
               </div>
             </div>

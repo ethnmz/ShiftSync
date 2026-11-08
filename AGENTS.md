@@ -49,7 +49,7 @@ Acknowledgment, verification, and a metric are software state only. They do not 
 
 ## 4. Who owns what
 
-Project direction: root `CLAUDE.md`. Scope: `docs/PRODUCT.md`. File owners: the table below and `docs/TEAM_PLAN.md`. The pack's own role table is not used. What is not built yet, and what changed versus the in-person notes, is `docs/IMPORT_NOTES.md` and `docs/CONTRACT_MIGRATION.md`. There is no 3D view.
+Project direction: root `CLAUDE.md`. Scope: `docs/PRODUCT.md`. File owners: the table below and `docs/TEAM_PLAN.md`. The pack's own role table is not used. What is not built yet, and what changed versus the in-person notes, is `docs/IMPORT_NOTES.md` and `docs/CONTRACT_MIGRATION.md`. There is no 3D facility or equipment view. The only 3D in the app is the decorative AI mascots in `frontend/src/components/mascots/`.
 
 Do not edit a path you do not own. One person owns each path below. A contract edit is one board note to the affected owners, then the contract owner edits that file.
 

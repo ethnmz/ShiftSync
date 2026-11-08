@@ -166,7 +166,7 @@ export default function ReviewStage({
       </section>
 
       {editable && (
-        <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-line bg-surface/95 px-5 py-4 backdrop-blur">
+        <div className="glass sticky bottom-4 z-10 flex flex-col gap-3 rounded-panel px-5 py-4">
           {openQuestions > 0 && (
             <Notice tone="warn">
               {openQuestions} clarification question still open. Safety questions must be answered first ("I don't know" counts).

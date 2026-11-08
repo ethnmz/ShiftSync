@@ -156,7 +156,72 @@ export interface Blocker {
 
 // GET /handoffs list rows. docs/API.md says "list" without a row shape, so
 // only the Handoff fields are relied on; the rest are shown when present.
-export type HandoffSummary = Handoff & Partial<Pick<HandoffDetail, "outgoing" | "incoming" | "status_line">>;
+// main's backend returns the timestamps at the top level; the offline sim
+// returns status_line. Read them through submittedAt().
+export type HandoffSummary = Handoff &
+  Partial<Pick<HandoffDetail, "outgoing" | "incoming" | "status_line">> & {
+    created_at?: string | null;
+    submitted_at?: string | null;
+    acknowledged_at?: string | null;
+    verified_at?: string | null;
+  };
+
+// GET /supervisor/summary (docs/API.md, Supervisor). Rows use the list shape.
+export interface SupervisorSummary {
+  pending_handoffs: HandoffSummary[];
+  completed_today: HandoffSummary[];
+  unresolved_questions: number;
+  outstanding_acknowledgments: HandoffSummary[];
+  verification: { verified: number; with_assistance: number; in_progress: number };
+  followups: { open: number; unassigned: number; overdue: number };
+}
+
+// GET /eval/results (docs/API.md, Evaluation). Every number comes from a real
+// run; when nothing ran, status is not_run and scenarios is {}.
+export interface Stat {
+  mean: number;
+  min: number;
+  max: number;
+  n: number;
+}
+export interface EvalExamples {
+  artifact?: string;
+  incorrect_statements?: string[];
+}
+export type EvalCondition = Record<string, Stat | EvalExamples | null>;
+export interface EvalResults {
+  status: "complete" | "not_run";
+  reason?: string;
+  running?: boolean;
+  generated_at?: string;
+  provider?: string;
+  runs?: number;
+  simulated?: boolean;
+  method_notes?: string[];
+  scenarios: Record<string, { problem?: string; conditions: Record<string, EvalCondition> }>;
+}
+
+// POST /demo/step/{n} (docs/API.md, Demo control).
+export interface DemoStep {
+  step: number;
+  at: string;
+  actor: string;
+  offline: boolean;
+  handoff: HandoffDetail;
+  question_shown?: string | null;
+  briefing?: Briefing | null;
+  attempt?: VerificationAttempt | null;
+  before?: { open: number; unassigned: number; overdue: number } | null;
+  after?: { open: number; unassigned: number; overdue: number } | null;
+}
+
+// GET /demo/scenario returns demo/scenario.json as-is; only these step fields are read.
+export interface DemoScenario {
+  name?: string;
+  steps: { n: number; actor: string; at: string; action?: string; say?: string; text?: string }[];
+}
+
+export const submittedAt = (h: HandoffSummary) => h.submitted_at ?? h.status_line?.submitted_at ?? null;
 
 export interface BriefingLine {
   text: string;
