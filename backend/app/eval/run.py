@@ -48,6 +48,7 @@ METHOD_NOTES = [
 OUTGOING, INCOMING = "maya", "jordan"
 MAX_QUESTIONS = 10
 QUOTE_MATCH = 85  # same threshold as the source-quote check
+MIN_EVIDENCE_CHARS = 8
 
 
 def results_path() -> Path:
@@ -65,6 +66,24 @@ def load_scenarios(only: str | None = None) -> list[dict[str, Any]]:
 
 def _words(text: str) -> int:
     return len(text.split())
+
+
+def _grounded(flags: list[Any], *sources: str) -> tuple[list[Any], list[dict[str, Any]]]:
+    """Keep an ok flag only if its evidence is really in one of `sources` (what Shift B reads,
+    plus QUESTIONS ASKED for missing_detected). The judge also sees NOTES and OPERATOR ANSWERS
+    so it can spot unsupported claims; without this check it gave credit from them.
+    Returns (flags with ungrounded ok turned off, the ones turned off, for spot-checking)."""
+    out, dropped = [], []
+    hay = [t.lower() for t in sources if t]
+    for f in flags:
+        ev = (getattr(f, "evidence", "") or "").strip().lower()
+        # Assumption: under MIN_EVIDENCE_CHARS a quote like "unknown" matches almost any artifact.
+        found = len(ev) >= MIN_EVIDENCE_CHARS and any(fuzz.partial_ratio(ev, h) >= QUOTE_MATCH for h in hay)
+        if f.ok and not found:
+            dropped.append({"index": f.index, "evidence": f.evidence, "why": f.why})
+            f = f.model_copy(update={"ok": False})
+        out.append(f)
+    return out, dropped
 
 
 def _rate(flags: list[Any], n: int) -> float | None:
@@ -163,6 +182,15 @@ async def run_once(sc: dict[str, Any], condition: str, llm: EvalLLM, analyzer: A
         i for i in j.incorrect_statements
         if i.statement and fuzz.partial_ratio(i.statement.lower(), graded.lower()) >= QUOTE_MATCH
     ]
+    # Every credit must be grounded in what Shift B reads (missing_detected may also cite a question asked).
+    asked_text = "\n".join(asked)
+    ungrounded: dict[str, list[dict[str, Any]]] = {}
+    for key in ("critical_facts", "ambiguous_resolved", "unknowns_preserved", "missing_detected"):
+        sources = (graded, asked_text) if key == "missing_detected" else (graded,)
+        kept, dropped = _grounded(getattr(j, key), *sources)
+        setattr(j, key, kept)
+        if dropped:
+            ungrounded[key] = dropped
     gt = sc["ground_truth_facts"]
     n_crit = sum(1 for f in gt if f.get("critical"))
     n_unk = sum(1 for f in gt if f["certainty"] in ("unverified", "unknown"))
@@ -180,6 +208,7 @@ async def run_once(sc: dict[str, Any], condition: str, llm: EvalLLM, analyzer: A
         "_artifact": artifact,
         "_incorrect_statements": [i.model_dump() for i in incorrect],
         "_judge": j.model_dump(),
+        "_ungrounded": ungrounded,
         "_reader_answers": reader,
     }
 
@@ -193,7 +222,8 @@ def _aggregate(runs: list[dict[str, Any]]) -> dict[str, Any]:
         out[key] = None if not vals else {"mean": statistics.fmean(vals), "min": min(vals), "max": max(vals), "n": len(vals)}
     # Run 1's evidence, so a person can spot-check every score (EVALUATION.md).
     out["examples"] = {"artifact": runs[0]["_artifact"], "incorrect_statements": runs[0]["_incorrect_statements"],
-                       "judge": runs[0]["_judge"], "reader_answers": runs[0]["_reader_answers"]}
+                       "judge": runs[0]["_judge"], "reader_answers": runs[0]["_reader_answers"],
+                       "ungrounded_credit_removed": runs[0]["_ungrounded"]}
     return out
 
 
