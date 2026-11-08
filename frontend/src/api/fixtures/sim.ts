@@ -231,20 +231,22 @@ export function simAnswer(questionId: string, answer: { text?: string; dontKnow?
   if (!answer.dontKnow) {
     for (const { itemId, facts } of step.addFacts) {
       const item = current.items.find((i) => i.id === itemId);
-      item?.facts.push(...facts.map((f) => ({ ...f, source_statement_id: statementId })));
+      item?.facts.push(...structuredClone(facts).map((f) => ({ ...f, source_statement_id: statementId })));
     }
     if (step.itemPatch) {
       const { itemId, ...patch } = step.itemPatch;
       Object.assign(current.items.find((i) => i.id === itemId) ?? {}, patch);
     }
   }
-  current.followups.push(...(step.followups ?? []));
-  current.not_asked.push(...(step.notAsked ?? []));
+  // Clone: the scripted steps must not be mutated, or a second run in the
+  // same session would start with answered questions and assigned owners.
+  current.followups.push(...structuredClone(step.followups ?? []));
+  current.not_asked.push(...structuredClone(step.notAsked ?? []));
   current.status_line.open_followups = current.followups.filter((f) => f.status !== "closed").length;
   current.status_line.unassigned_followups = current.followups.filter((f) => !f.owner).length;
 
   if (step.next) {
-    current.questions.push(step.next);
+    current.questions.push(structuredClone(step.next));
     current.budget.used += 1;
   } else {
     current.state = "in_review";
