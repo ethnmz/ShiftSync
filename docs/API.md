@@ -4,7 +4,7 @@ This is the final spec pack's contract. It replaces the earlier interview/signof
 
 Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/src/api/types.ts`; fixtures in `src/api/fixtures/`. Demo auth: `X-User: <roster id>` header (role from roster). Role checks are enforced for submit, acknowledge, follow-up assignment and clarified-in-person.
 
-**Errors** (every 4xx): `{ "detail": { "code": "...", "message": "display-ready text", ...extra } }`. Codes include `not_found`, `forbidden`, `unknown_user`, `conflict`, `unprocessable`, `submit_blocked` (extra: `blockers`), `analysis_failed` (extra: `statement_id`; the statement is kept and nothing else changes), and `transcription_failed` (422 from `POST /handoffs/{id}/statements` and `POST /verification/{vid}/answer`; extra: `audio_saved: true`; the UI shows `message` next to the text box).
+**Errors** (every 4xx): `{ "detail": { "code": "...", "message": "display-ready text", ...extra } }`. Codes include `not_found`, `forbidden`, `unknown_user`, `conflict`, `unprocessable`, `submit_blocked` (extra: `blockers`), `analysis_failed` (extra: `statement_id`; the statement is kept and nothing else changes), and `unknown_sender` (403 from `POST /inbound/imessage`; nothing is stored), `transcription_failed` (422 from `POST /handoffs/{id}/statements` and `POST /verification/{vid}/answer`; extra: `audio_saved: true`; the UI shows `message` next to the text box).
 
 ## Handoffs
 - `POST /handoffs` `{ "outgoing_id": "maya", "incoming_id": "jordan" }` → `HandoffDetail` (state `draft`; carried-over open items/follow-ups attached)
@@ -89,4 +89,4 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 `POST /demo/reset` · `POST /demo/clock` · `POST /demo/step/{n}` (replays `demo/scenario.json` through the real endpoints) · `GET /demo/scenario`
 
 ## Optional: Photon bridge
-`POST /inbound/imessage` `{ "sender_phone", "text" | audio }` → routes to the sender's open draft handoff (or creates one) → `{ "reply", "followups": [] }`
+`POST /inbound/imessage` `{ "sender_phone", "text" | audio }` → routes to the sender's open draft handoff (or creates one) → `{ "reply", "followups": [] }`. 403 `unknown_sender` if the number is not on the roster; nothing is stored.
