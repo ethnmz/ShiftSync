@@ -60,7 +60,8 @@ def test_first_text_starts_a_handoff_and_asks_the_top_question(api):
     assert body["reply"].startswith("Started your handoff to Jordan. Added: UPS-B ")
     # Uncertainty stays visible; a confirmed-looking check mark is never shown.
     assert 'UPS-B (⚠ unverified: "mostly")' in body["reply"]
-    assert "Cooling inspection (? unknown)" in body["reply"]
+    # Prefix only: #13's certainty floor also appends the trigger word (': "not sure"').
+    assert "Cooling inspection (? unknown" in body["reply"]
     assert "✓" not in body["reply"]
     (question,) = body["followups"]
     assert question.startswith("(1/3) ") and question.endswith('Reply, send a voice note, or "don\'t know".')
