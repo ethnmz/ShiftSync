@@ -45,8 +45,13 @@ def find_term(text: str, terms: list[str]) -> str | None:
 
 
 def floor_certainty(proposed: str, quote: str | None) -> tuple[str, str | None]:
-    """Return (certainty, reason). Reason is set only when the floor lowered it,
-    e.g. `hedge:"mostly"`. A missing quote cannot support anything above `reported`.
+    """Return (certainty, reason).
+
+    Reason names the lexicon term that sets the result, e.g. `hedge:"mostly"`,
+    whether the floor lowered it or the proposal already matched the cap (the UI
+    underlines that term). None when no term explains the certainty. A missing
+    quote cannot support anything above `reported`. Compare the result with
+    `proposed` to know whether the floor actually lowered it.
     """
     if proposed not in CERTAINTIES:
         raise ValueError(f"unknown certainty {proposed!r}")
@@ -56,7 +61,7 @@ def floor_certainty(proposed: str, quote: str | None) -> tuple[str, str | None]:
     lang = config.language()
     for key, cap, label in _CAPS:
         term = find_term(quote, lang.get(key, []))
-        if term and rank(proposed) > rank(cap):
+        if term and rank(proposed) >= rank(cap):
             return cap, f'{label}:"{term}"'
     return proposed, None
 

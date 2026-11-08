@@ -158,7 +158,8 @@ def check_out(c: VerificationCheck) -> dict[str, Any]:
 def template_verify_question(view: ItemView) -> str:
     if view.kind == "inspection":
         return f"What do we know about the {view.item.title}, and who is following up?"
-    return f"What is the current status of {view.item.title}, and what must be verified before testing?"
+    name = view.item.asset_ids[0] if len(view.item.asset_ids) == 1 else view.item.title
+    return f"What is the current status of {name}, and what must be verified before testing?"
 
 
 async def start_verification(session: Session, handoff_id: str, actor_id: str,

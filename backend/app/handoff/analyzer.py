@@ -15,10 +15,12 @@ Tests pass a `ScriptedAnalyzer`.
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from pydantic import BaseModel, field_validator
 from rapidfuzz import fuzz
 
 from app import config
@@ -86,27 +88,99 @@ class Analyzer(Protocol):
     async def grade(self, *, question: str, answer_key: dict[str, Any], answer: str) -> Any: ...
 
 
+def _json(payload: dict[str, Any]) -> str:
+    """User content for the model: JSON, so quotes like "didn't" can't break the structure."""
+    return json.dumps(payload, ensure_ascii=False, indent=1, default=str)
+
+
 def _prompt(name: str) -> str:
     return (config.BACKEND_DIR / "app" / "prompts" / f"{name}.md").read_text(encoding="utf-8")
 
 
+def _max_words(v: str, n: int) -> str:
+    if len(v.split()) > n:
+        raise ValueError(f"at most {n} words")
+    return v
+
+
+class _ClarificationText(BaseModel):
+    """Fallback mirror of AI_PIPELINE.md's ClarificationText, used until app.schemas defines it."""
+    text: str
+    why_asked: str
+
+    @field_validator("text")
+    @classmethod
+    def _text(cls, v: str) -> str:
+        return _max_words(v, 30)
+
+    @field_validator("why_asked")
+    @classmethod
+    def _why(cls, v: str) -> str:
+        return _max_words(v, 10)
+
+
+class _BriefingText(BaseModel):
+    headline: str
+    lines: list[dict[str, Any]]
+
+    @field_validator("headline")
+    @classmethod
+    def _headline(cls, v: str) -> str:
+        return _max_words(v, 25)
+
+
+class _VerificationQuestionText(BaseModel):
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def _text(cls, v: str) -> str:
+        return _max_words(v, 25)
+
+
+_FALLBACK_SCHEMAS = {"ClarificationText": _ClarificationText, "BriefingText": _BriefingText,
+                     "VerificationQuestionText": _VerificationQuestionText}
+
+
+def _schema(name: str) -> type[BaseModel]:
+    """Akshi's schema from app.schemas when it exists, else the spec mirror above."""
+    try:
+        found = getattr(importlib.import_module("app.schemas"), name, None)
+    except ImportError:
+        found = None
+    if found is None and name in _FALLBACK_SCHEMAS:
+        return _FALLBACK_SCHEMAS[name]
+    if found is None:
+        raise LookupError(f"schema {name} is not available")
+    return found
+
+
 async def _complete(task: str, prompt: str, user: str, schema_name: str) -> Any:
     client = importlib.import_module("app.llm.client")
-    schemas = importlib.import_module("app.schemas")
-    return await client.complete_json(task, _prompt(prompt), user, getattr(schemas, schema_name))
+    return await client.complete_json(task, _prompt(prompt), user, _schema(schema_name))
 
 
 # ---------- Deterministic helpers ----------
 
 def verify_quote(quote: str | None, text: str) -> bool:
-    """Akshi's quote check if present, else rapidfuzz partial_ratio ≥ 85."""
+    """Akshi's quote check (`app.certainty.quotes.supported_quote`) if present,
+    else rapidfuzz partial_ratio ≥ 85."""
     if not quote:
         return False
     try:
         mod = importlib.import_module("app.certainty.quotes")
-        return bool(mod.verify_quote(quote, text))
-    except (ImportError, AttributeError):
-        return fuzz.partial_ratio(quote.lower(), text.lower()) >= QUOTE_MATCH_THRESHOLD
+    except ImportError:
+        mod = None
+    check = getattr(mod, "supported_quote", None) or getattr(mod, "verify_quote", None)
+    if check is not None:
+        return bool(check(quote, text))
+    return fuzz.partial_ratio(quote.lower(), text.lower()) >= QUOTE_MATCH_THRESHOLD
+
+
+def _roster_for_llm() -> list[dict[str, Any]]:
+    """Roster without phone numbers: only the configured providers see content, and phones aren't needed."""
+    return [{"id": p["id"], "name": p["name"], "role": p["role"], "team": p.get("team")}
+            for p in config.people().values()]
 
 
 def template_question(gap: dict[str, Any], item: dict[str, Any]) -> tuple[str, str]:
@@ -146,21 +220,27 @@ class DefaultAnalyzer:
     async def extract(self, *, text, speaker, existing_items, scope):
         try:
             mod = importlib.import_module("app.extract")
-            fn = getattr(mod, "extract_statement")
-        except (ImportError, AttributeError) as e:
+        except ImportError as e:
             raise AnalysisError("extraction is not available yet") from e
+        speaker = {k: v for k, v in speaker.items() if k != "phone"}
         try:
-            return await fn(text=text, speaker=speaker, existing_items=existing_items, scope=scope)
+            if hasattr(mod, "extract"):
+                # Akshi's signature: extract(statement, *, assets, kinds, roster, speaker, existing_items, scope)
+                return await mod.extract(text, assets=config.load_yaml("assets")["assets"],
+                                         kinds=config.slots()["kinds"], roster=_roster_for_llm(),
+                                         speaker=speaker, existing_items=existing_items, scope=scope)
+            if hasattr(mod, "extract_statement"):
+                return await mod.extract_statement(text=text, speaker=speaker, existing_items=existing_items,
+                                                   scope=scope)
         except Exception as e:  # any failure → no state change
             log.warning("extraction failed: %s", e)
             raise AnalysisError("Couldn't analyze that. Try again or type it.") from e
+        raise AnalysisError("extraction is not available yet")
 
     async def phrase_question(self, *, gap, item):
         try:
-            user = (f"GAP: {gap['gap_type']} on slots {gap['slots']} ({gap.get('reason', '')})\n"
-                    f"ITEM: {item['title']} ({item['kind']})\n"
-                    f"FACTS: {item.get('facts', [])}\n"
-                    f"SHIFT A'S WORDS: {item.get('quotes', [])}")
+            user = _json({"GAP": gap, "ITEM": {"title": item["title"], "kind": item["kind"]},
+                          "FACTS": item.get("facts", []), "SHIFT A'S WORDS": item.get("quotes", [])})
             out = await _complete("clarify", "clarify", user, "ClarificationText")
             return out.text, out.why_asked
         except Exception as e:  # missing module, provider down, invalid JSON twice
@@ -170,7 +250,7 @@ class DefaultAnalyzer:
     async def brief(self, *, items):
         """(headline, lines) from the LLM, or None → caller uses the template."""
         try:
-            out = await _complete("brief", "brief", f"REVIEWED ITEMS (in order): {items}", "BriefingText")
+            out = await _complete("brief", "brief", _json({"REVIEWED ITEMS (in order)": items}), "BriefingText")
             return out.headline, [dict(line) for line in out.lines]
         except Exception as e:
             log.info("briefing fell back to template: %s", e)
@@ -179,7 +259,7 @@ class DefaultAnalyzer:
     async def verify_question(self, *, item, answer_key):
         try:
             out = await _complete("verify_question", "verify_question",
-                                  f"ITEM: {item}\nANSWER KEY: {answer_key}", "VerificationQuestionText")
+                                  _json({"ITEM": item, "ANSWER KEY": answer_key}), "VerificationQuestionText")
             return out.text
         except Exception as e:
             log.info("verification question fell back to template: %s", e)
@@ -189,7 +269,7 @@ class DefaultAnalyzer:
         """GradeResult. Failure → AnalysisError (no attempt is recorded)."""
         try:
             return await _complete("grade", "grade",
-                                   f"QUESTION: {question}\nANSWER KEY: {answer_key}\nANSWER: {answer}", "GradeResult")
+                                   _json({"QUESTION": question, "ANSWER KEY": answer_key, "ANSWER": answer}), "GradeResult")
         except Exception as e:
             log.warning("grading failed: %s", e)
             raise AnalysisError("Couldn't check that answer. Try again.") from e
