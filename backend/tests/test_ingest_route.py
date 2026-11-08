@@ -30,7 +30,7 @@ def api(tmp_path, monkeypatch):
 
     calls: list[dict] = []
 
-    def fake_ingest(**kwargs):
+    async def fake_ingest(**kwargs):
         calls.append(kwargs)
         return {"id": kwargs["handoff_id"], "state": "clarifying"}
 
@@ -47,6 +47,13 @@ def api(tmp_path, monkeypatch):
     app.dependency_overrides[ingest.get_ingest_statement] = lambda: fake_ingest
     return SimpleNamespace(client=TestClient(app), app=app, calls=calls, stt_calls=stt_calls,
                            audio_dir=tmp_path / "data" / "audio")
+
+
+def error_code(r) -> str:
+    """docs/API.md: every 4xx is {"detail": {"code", "message"}} with a display-ready message."""
+    detail = r.json()["detail"]
+    assert detail["message"]
+    return detail["code"]
 
 
 def set_state(value: str) -> None:
@@ -81,17 +88,8 @@ def test_text_answer_keeps_question_id(api):
 @pytest.mark.parametrize("body", [{}, {"text": "   "}, {"text": 42}, ["text"]])
 def test_blank_text_is_rejected(api, body):
     r = api.client.post(URL, json=body, headers=MAYA)
-    assert r.status_code == 422
+    assert r.status_code == 422 and error_code(r) == "unprocessable"
     assert api.calls == []
-
-
-def test_async_service_is_awaited(api):
-    async def async_ingest(**kwargs):
-        return {"id": kwargs["handoff_id"], "state": "in_review"}
-
-    api.app.dependency_overrides[ingest.get_ingest_statement] = lambda: async_ingest
-    r = api.client.post(URL, json={"text": "All done."}, headers=MAYA)
-    assert r.json()["state"] == "in_review"
 
 
 # ---- audio ----
@@ -121,9 +119,9 @@ def test_failed_transcription_keeps_audio_and_asks_for_text(api, monkeypatch):
 
     monkeypatch.setattr(ingest.stt, "transcribe", fail)
     r = api.client.post(URL, files=audio(), headers=MAYA)
-    assert r.status_code == 422
+    assert r.status_code == 422 and error_code(r) == "transcription_failed"
     detail = r.json()["detail"]
-    assert detail["code"] == "transcription_failed"
+    assert detail["audio_saved"] is True
     assert "No speech" in detail["message"] and "type it" in detail["message"]
     assert len(list(api.audio_dir.iterdir())) == 1  # kept
     assert api.calls == []  # nothing invented, nothing ingested
@@ -131,7 +129,7 @@ def test_failed_transcription_keeps_audio_and_asks_for_text(api, monkeypatch):
 
 def test_empty_recording_is_rejected_and_not_kept(api):
     r = api.client.post(URL, files=audio(data=b""), headers=MAYA)
-    assert r.status_code == 422
+    assert r.status_code == 422 and error_code(r) == "unprocessable"
     assert list(api.audio_dir.iterdir()) == []
     assert api.stt_calls == []
 
@@ -139,26 +137,26 @@ def test_empty_recording_is_rejected_and_not_kept(api):
 def test_oversize_recording_is_rejected_and_not_kept(api, monkeypatch):
     monkeypatch.setattr(ingest, "MAX_AUDIO_BYTES", 10)
     r = api.client.post(URL, files=audio(data=b"x" * 11), headers=MAYA)
-    assert r.status_code == 413
+    assert r.status_code == 422 and error_code(r) == "unprocessable"
     assert list(api.audio_dir.iterdir()) == []
 
 
 def test_multipart_without_file(api):
     r = api.client.post(URL, data={"question_id": "Q-1"}, files={"other": ("a", b"b")}, headers=MAYA)
-    assert r.status_code == 422
+    assert r.status_code == 422 and error_code(r) == "unprocessable"
 
 
 # ---- who and when ----
 
 def test_incoming_operator_cannot_add(api):
     r = api.client.post(URL, files=audio(), headers=JORDAN)
-    assert r.status_code == 403
+    assert r.status_code == 403 and error_code(r) == "forbidden"
     assert not api.audio_dir.exists() and api.stt_calls == []
 
 
 def test_unknown_user_cannot_add(api):
     r = api.client.post(URL, json={"text": "hi"}, headers={"X-User": "mallory"})
-    assert r.status_code == 403
+    assert r.status_code == 403 and error_code(r) == "forbidden"
 
 
 def test_missing_user_header(api):
@@ -167,7 +165,7 @@ def test_missing_user_header(api):
 
 def test_unknown_handoff(api):
     r = api.client.post("/api/handoffs/H-9999/statements", files=audio(), headers=MAYA)
-    assert r.status_code == 404
+    assert r.status_code == 404 and error_code(r) == "not_found"
     assert not api.audio_dir.exists()
 
 
@@ -175,10 +173,10 @@ def test_unknown_handoff(api):
 def test_no_statements_after_submit(api, closed):
     set_state(closed)
     r = api.client.post(URL, files=audio(), headers=MAYA)
-    assert r.status_code == 409
+    assert r.status_code == 409 and error_code(r) == "conflict"
     assert not api.audio_dir.exists() and api.stt_calls == []
 
 
 def test_unsupported_content_type(api):
     r = api.client.post(URL, content=b"hello", headers={**MAYA, "content-type": "text/plain"})
-    assert r.status_code == 415
+    assert r.status_code == 422 and error_code(r) == "unprocessable"

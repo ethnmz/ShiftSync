@@ -8,11 +8,10 @@ which owns the Statement row, analysis and state changes.
 
 from __future__ import annotations
 
-import inspect
 import logging
 import re
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Any
@@ -38,11 +37,16 @@ _SAFE_SUFFIX = re.compile(r"^\.[a-z0-9]{1,5}$")
 _DEFAULT_SUFFIX = ".webm"  # what browser MediaRecorder produces
 
 
-def get_ingest_statement() -> Callable[..., Any]:
+def get_ingest_statement() -> Callable[..., Awaitable[Any]]:
     """The handoff service call, as a dependency so tests can pass a fake until it lands."""
     from app.handoff.service import ingest_statement
 
     return ingest_statement
+
+
+def _error(status: int, code: str, message: str, **extra: Any) -> HTTPException:
+    """docs/API.md: every 4xx is {"detail": {"code", "message", ...extra}}; message is display-ready."""
+    return HTTPException(status, {"code": code, "message": message, **extra})
 
 
 @router.post("/handoffs/{handoff_id}/statements")
@@ -51,18 +55,18 @@ async def add_statement(
     request: Request,
     x_user: str = Header(),
     session: Session = Depends(get_session),
-    ingest_statement: Callable[..., Any] = Depends(get_ingest_statement),
+    ingest_statement: Callable[..., Awaitable[Any]] = Depends(get_ingest_statement),
 ):
     # Check who and where before saving anything, so stray uploads never reach disk or STT.
     handoff = session.get(Handoff, handoff_id)
     if handoff is None:
-        raise HTTPException(404, f"Handoff {handoff_id} not found.")
+        raise _error(404, "not_found", f"Handoff {handoff_id} not found.")
     try:
         state.authorize(handoff, "statement_added", x_user)
     except state.ActorError:
-        raise HTTPException(403, "Only the outgoing operator can add to this handoff.") from None
+        raise _error(403, "forbidden", "Only the outgoing operator can add to this handoff.") from None
     if handoff.state not in state.SHIFT_A_EDIT_STATES:
-        raise HTTPException(409, f"This handoff is {handoff.state}. It no longer takes new statements.")
+        raise _error(409, "conflict", f"This handoff is {handoff.state}. It no longer takes new statements.")
 
     content_type = request.headers.get("content-type", "")
     audio_path: str | None = None
@@ -70,7 +74,7 @@ async def add_statement(
         form = await request.form()
         upload = form.get("file")
         if not isinstance(upload, UploadFile):
-            raise HTTPException(422, "Send the recording in the `file` field.")
+            raise _error(422, "unprocessable", "Send the recording in the `file` field.")
         question_id = _form_str(form.get("question_id"))
         saved = await _save_upload(upload, handoff_id)
         # Assumption: audio_path is stored relative to DATA_DIR ("audio/H-0001-….webm").
@@ -79,42 +83,31 @@ async def add_statement(
             transcript = await run_in_threadpool(stt.transcribe, saved)
         except stt.STTError as exc:
             log.warning("Transcription failed for %s (%s); audio kept at %s", handoff_id, exc, audio_path)
-            # Temporary shape, not in docs/API.md yet: the UI shows `message` next to a text box.
-            raise HTTPException(
-                422,
-                {"code": "transcription_failed",
-                 "message": f"Couldn't transcribe that recording. {exc} You can type it instead.",
-                 "audio_saved": True},
+            raise _error(
+                422, "transcription_failed",
+                f"Couldn't transcribe that recording. {exc} You can type it instead.",
+                audio_saved=True,
             ) from None
         text, source = transcript.text, "voice_web"
     elif content_type.startswith("application/json"):
         try:
             body = await request.json()
         except (JSONDecodeError, UnicodeDecodeError):
-            raise HTTPException(422, "The request body isn't valid JSON.") from None
+            raise _error(422, "unprocessable", "The request body isn't valid JSON.") from None
         if not isinstance(body, dict):
-            raise HTTPException(422, 'Send {"text": "..."}.')
+            raise _error(422, "unprocessable", 'Send {"text": "..."}.')
         text = body.get("text").strip() if isinstance(body.get("text"), str) else ""
         if not text:
-            raise HTTPException(422, "Type something or record a voice note.")
+            raise _error(422, "unprocessable", "Type something or record a voice note.")
         question_id = _form_str(body.get("question_id"))
         source = "text_web"
     else:
-        raise HTTPException(415, "Send JSON text or a multipart recording.")
+        raise _error(422, "unprocessable", "Send JSON text or a multipart recording.")
 
-    try:
-        result = ingest_statement(
-            session=session, handoff_id=handoff_id, speaker_id=x_user, text=text,
-            source=source, question_id=question_id, audio_path=audio_path,
-        )
-        # Whether the service is async isn't settled yet; accept both until it lands.
-        if inspect.isawaitable(result):
-            result = await result
-    except state.ActorError:
-        raise HTTPException(403, "Only the outgoing operator can add to this handoff.") from None
-    except state.TransitionError as exc:
-        raise HTTPException(409, str(exc)) from None
-    return result
+    return await ingest_statement(
+        session=session, handoff_id=handoff_id, speaker_id=x_user, text=text,
+        source=source, question_id=question_id, audio_path=audio_path,
+    )
 
 
 def _form_str(value: Any) -> str | None:
@@ -141,8 +134,8 @@ async def _save_upload(upload: UploadFile, handoff_id: str) -> Path:
             out.write(chunk)
     if size > MAX_AUDIO_BYTES:
         dest.unlink(missing_ok=True)
-        raise HTTPException(413, "That recording is too long. Keep voice notes under 25 MB.")
+        raise _error(422, "unprocessable", "That recording is too long. Keep voice notes under 25 MB.")
     if size == 0:
         dest.unlink(missing_ok=True)
-        raise HTTPException(422, "The recording is empty.")
+        raise _error(422, "unprocessable", "The recording is empty.")
     return dest
