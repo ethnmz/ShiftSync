@@ -1,6 +1,6 @@
 # Data Model (SQLModel + SQLite, persistent)
 
-This is the final spec pack's model. Field-name changes from the in-person agreement are mapped in `docs/CONTRACT_MIGRATION.md`.
+This is the final spec pack's model. Field-name changes from the in-person agreement are mapped in `docs/CONTRACT_MIGRATION.md`. All four people approved the pack's version on the board on 2026-11-08 (https://github.com/ethnmz/hackutd2026/issues/1#issuecomment-6716896792 and the replies below it).
 
 Static config in `config/*.yaml` loads at startup (persons and assets are mirrored into tables).
 
