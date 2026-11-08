@@ -1,6 +1,6 @@
-# ShiftSync
+# Handoff Ledger
 
-Working name for the HackUTD 2026 team repo: https://github.com/ethnmz/hackutd2026. ShiftSync is a NorthMark Compute & Cloud data-center shift-handoff prototype. Branding is not final. The product brief is [docs/project-brief.md](docs/project-brief.md).
+HackUTD 2026 team repo: https://github.com/ethnmz/hackutd2026. Handoff Ledger is a data-center handoff ledger for a NorthMark track. The earlier name ShiftSync is retired. What was actually imported is [docs/project-brief.md](docs/project-brief.md). Roles and proposed interfaces are [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md).
 
 Agents coordinate on one GitHub issue, [Message Board #1](https://github.com/ethnmz/hackutd2026/issues/1). The issue exists and is not pinned yet. Rules live in [AGENTS.md](AGENTS.md). Local setup that cloning does not do for you is [docs/coordination.md](docs/coordination.md).
 
@@ -8,33 +8,20 @@ This repo was generated from [azizu06/hackathon-agent-board](https://github.com/
 
 ![The hacking floor at Cal Hacks](docs/banner.jpg)
 
-## Quickstart for this team
+## Who owns what
 
-Cloning the repo does not log you in, pin the board, fill the missing GitHub logins, or start an agent. Do this on your own machine after the setup PR is merged (until then, use the setup branch):
+The application tree is not created yet. Paths below are the confirmed ownership map. A 3D facility view is pending a separate decision. It is not this table and it is not cancelled.
 
-1. Install [GitHub CLI](https://cli.github.com) if you need it.
-2. Run `gh auth login` as yourself. A shared login hides teammates' posts. See [docs/coordination.md](docs/coordination.md).
-3. From the repo root, run `tools/board whoami`. It must print your login.
-4. Read the folder you own in the table below, then [AGENTS.md](AGENTS.md).
-
-| Person | Login | You own | Start here |
+| Person | Login | Confirmed role | Paths |
 |---|---|---|---|
-| Ethan Meza | `ethnmz` (verified repo owner) | UI/UX, the 3D facility view, human decisions, team rules | `ui/` |
-| Diego Lozano | `GITHUB_LOGIN_DIEGO` | Integration, deploy notes, shared contracts. You approve contract and integration changes | `integration/`, `contracts/PROPOSAL.md` |
-| Aditri Tangeti | `GITHUB_LOGIN_ADITRI` | Structured events, state, dependency checks, and tests for those checks | `services/event-store/` |
-| Akshi Biswal | `GITHUB_LOGIN_AKSHI` | Transcription, extraction, source-grounded explanations | `services/extraction/` |
+| Ethan Meza | `ethnmz` | Frontend, screens, demo | `frontend/`, `docs/DEMO_SCRIPT.md` |
+| Diego Lozano | `GITHUB_LOGIN_DIEGO` | Photon messaging, voice input | `photon-bridge/`, `backend/app/stt/`, `backend/app/routes/ingest.py`, `backend/app/notify.py` |
+| Akshi Biswal | `GITHUB_LOGIN_AKSHI` | AI extraction, prompts, checks | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/pipeline/extract.py`, `backend/app/handoff/clarify.py`, `backend/app/handoff/readback.py`, `backend/app/ask.py`, `backend/tests/test_scenario.py` |
+| Aditri Tangeti | `GITHUB_LOGIN_ADITRI` | Database, equipment rules, handoff logic | `backend/app/models.py`, `backend/app/pipeline/reconcile.py`, `backend/app/pipeline/rules.py`, `backend/app/pipeline/conflicts.py`, `backend/app/pipeline/stale.py`, `backend/app/handoff/state.py`, `backend/app/handoff/score.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/` |
 
-`GITHUB_LOGIN_DIEGO`, `GITHUB_LOGIN_ADITRI`, and `GITHUB_LOGIN_AKSHI` are placeholders. They are not accounts. Do not invent handles from names. The person, or Ethan after they say the login, replaces the placeholder in `AGENTS.md` and this table before anyone mentions them.
+The three `GITHUB_LOGIN_` names are placeholders, not accounts. Do not invent handles. Shared interface changes need all four people to agree on the board. `backend/app/pipeline/` and `backend/app/handoff/` are split by file.
 
-**Ethan.** You decide product scope. Your view is a fictional, read-only demo of racks, cooling, and backup power: select equipment or a planned task, highlight affected equipment, reset. It is not a validated engineering simulation. Ask Diego before changing `contracts/` or `integration/`.
-
-**Diego.** You approve the shared contract and integration changes. Wiring and deploy notes go in `integration/`. No framework, host, or cloud is chosen. Edit `ui/` or `services/` only after a board handoff from that owner.
-
-**Aditri.** You store source-backed equipment events and test checks for conflicting or omitted unresolved conditions and for planned tasks against configured dependencies. A check can flag a problem. It cannot clear physical work.
-
-**Akshi.** You turn synthetic voice transcripts, vendor emails, and maintenance records into proposed events with source excerpts, and you explain results from those excerpts. No model or API is chosen.
-
-**Everyone.** Use your own branch and git worktree. Review and tests use a different worktree from the one an agent is editing. Ask on the board before editing someone else's paths. Claude Code runs the committed hooks in `.claude/` after `gh` is logged in. Codex has no hook in this repo: run `tools/board unread` yourself. Agents are not ready until `tools/board whoami` prints the right login and the missing logins are filled in.
+Cloning does not log you in or start an agent. The next local step, after you choose to set a machine up, is `gh auth login` as yourself and `tools/board whoami`. Details stay in [docs/coordination.md](docs/coordination.md). Use your own branch and a separate worktree from review.
 
 ## How the board works
 
@@ -51,7 +38,7 @@ sequenceDiagram
 
 The names in the diagram are the template's example, not this team.
 
-1. Each person owns the folders in the table above. Every agent reads that table in `AGENTS.md`.
+1. Each person owns the paths in the table above. Every agent reads that table in `AGENTS.md`.
 2. One issue is the board. Every agent posts there when it finishes something or needs something.
 3. Tag a teammate by real GitHub login. `tools/board wait` wakes on someone else's post and flags a post that tags you.
 

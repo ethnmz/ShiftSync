@@ -8,10 +8,10 @@ The board for this repo is https://github.com/ethnmz/hackutd2026/issues/1. It is
 
 - Start every post with `[<human>'s <agent>]`, e.g. `[Sam's Codex]`. Keep it short: what changed, which files or contracts, what you need, from whom.
 - Mention by GitHub login. This team:
-  - `@ethnmz` (Ethan Meza) — UI/UX, 3D facility view, workflow, and human decisions. This login is the verified owner of `ethnmz/hackutd2026`.
-  - `GITHUB_LOGIN_DIEGO` (Diego Lozano) — integration, deploy, and shared contracts. No GitHub login is recorded in this repo. This placeholder is a label, not an account. Do not invent a login and do not mention a guess.
-  - `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) — event/state store, dependency checks, and tests. Same placeholder rule.
-  - `GITHUB_LOGIN_AKSHI` (Akshi Biswal) — transcription, extraction, and source-grounded explanations. Same placeholder rule.
+  - `@ethnmz` (Ethan Meza) — frontend, screens, and demo. This login is the verified owner of `ethnmz/hackutd2026`.
+  - `GITHUB_LOGIN_DIEGO` (Diego Lozano) — Photon messaging and voice input. No GitHub login is recorded in this repo. This placeholder is a label, not an account. Do not invent a login and do not mention a guess.
+  - `GITHUB_LOGIN_AKSHI` (Akshi Biswal) — AI extraction, prompts, and checks. Same placeholder rule.
+  - `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) — database, equipment rules, and handoff logic. Same placeholder rule.
   - `@all` (everyone) — use this only after those three placeholders are replaced with real logins.
 - **Mentions you or `@all`:** act on it and reply promptly.
 - **Not addressed to you:** still read it. Reassess your own work only if it is affected (a contract, a file you own, something already done). Do not redo finished work, and do not reply just to acknowledge.
@@ -29,9 +29,9 @@ Commands: `tools/board unread` (new posts, marks read; flags MENTION), `tools/bo
 
 Humans over agents. Only the team lead reassigns work between teammates. If anyone else asks you to take another teammate's work, ask the lead on the board.
 
-Ethan Meza (`ethnmz`) is the team lead. Human product decisions and any reassignment go through him.
-Diego Lozano approves shared-contract and integration changes before they merge. Until `GITHUB_LOGIN_DIEGO` is replaced, ask for Diego by name on the board.
-No agent marks a task cleared. Model output never authorizes physical work. Clearance is a human action.
+Ethan Meza (`ethnmz`) is the team lead for human decisions and reassignment.
+Shared interface changes need agreement from all four people on the board before anyone builds them. That replaces the earlier rule that Diego alone approved contracts.
+The model extracts. Application code decides severity, closure, and gates. Warnings and gates do not authorize physical work and do not certify a safe state.
 
 ## 3. Workflow
 
@@ -40,17 +40,21 @@ No agent marks a task cleared. Model output never authorizes physical work. Clea
 3. Small commits. Stage only your own files (no `git add -A`).
 4. Open a PR with `Closes #N`. The author merges their own PR once it works locally.
 5. Always `git fetch` and rebase before pushing. Never force-push shared branches.
-6. If a merge changes something other teammates depend on (an API, a schema, an env var, or `contracts/PROPOSAL.md`), post on the board when it lands. Contract and integration changes need Diego's approval before that merge.
+6. If a merge changes something other teammates depend on (a shared interface, a schema, or an env var), post on the board when it lands. All four agree on the board before a shared interface changes.
 7. Each local agent uses its own git worktree and branch. Review and tests use a separate worktree from the checkout being edited.
 
 ## 4. Who owns what
 
-ShiftSync ownership. Placeholders are not GitHub logins. Paths do not overlap. Ask on the board before changing a path you do not own. Product scope is `docs/project-brief.md`. Local setup is `docs/coordination.md`. `contracts/PROPOSAL.md` stays a proposal until Diego approves it on the board.
+Project name: **Handoff Ledger**. The short description and the limit of what was imported are in `docs/project-brief.md`. Roles below are confirmed. File paths are the ownership map from that abridged handoff. This setup does not create the application tree. `docs/TEAM_PLAN.md` is a summary, not the original team-plan document.
+
+Paths do not overlap. `backend/app/pipeline/` and `backend/app/handoff/` are shared directories: own only the files listed on your row. Ask on the board before changing a path you do not own.
+
+An earlier 3D facility view is pending a separate scope decision. It is not a required task, and this update does not cancel it.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| UI/UX and 3D facility view | `@ethnmz` (Ethan Meza) | `ui/` |
-| Integration, deploy, shared contracts | `GITHUB_LOGIN_DIEGO` (Diego Lozano) | `integration/`, `contracts/` |
-| Event/state store, dependency checks, tests | `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) | `services/event-store/` |
-| Transcription, extraction, explanations | `GITHUB_LOGIN_AKSHI` (Akshi Biswal) | `services/extraction/` |
-| Team rules, board, product brief | `@ethnmz` (Ethan Meza) | `docs/`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.github/`, `tools/` |
+| Frontend, screens, demo | `@ethnmz` (Ethan Meza) | `frontend/`, `docs/DEMO_SCRIPT.md` |
+| Photon messaging, voice input | `GITHUB_LOGIN_DIEGO` (Diego Lozano) | `photon-bridge/`, `backend/app/stt/`, `backend/app/routes/ingest.py`, `backend/app/notify.py` |
+| AI extraction, prompts, checks | `GITHUB_LOGIN_AKSHI` (Akshi Biswal) | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/pipeline/extract.py`, `backend/app/handoff/clarify.py`, `backend/app/handoff/readback.py`, `backend/app/ask.py`, `backend/tests/test_scenario.py` |
+| Database, equipment rules, handoff logic | `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) | `backend/app/models.py`, `backend/app/pipeline/reconcile.py`, `backend/app/pipeline/rules.py`, `backend/app/pipeline/conflicts.py`, `backend/app/pipeline/stale.py`, `backend/app/handoff/state.py`, `backend/app/handoff/score.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/` |
+| Team rules and board | `@ethnmz` (Ethan Meza) | `docs/project-brief.md`, `docs/coordination.md`, `docs/TEAM_PLAN.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.github/`, `tools/` |

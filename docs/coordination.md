@@ -8,7 +8,7 @@ This file is the checklist the template does not finish for you. Cloning, or ope
 
 - Created the Message Board as issue #1, so `tools/board` can use its default `BOARD_ISSUE=1`.
 - Left `tools/board`, `.claude/settings.json`, and both hook scripts unchanged.
-- Wrote ownership, the product brief, and a proposed contract. Those files are on the setup branch until the pull request is merged. `main` does not have them yet. Treat this setup as pending merge.
+- Wrote ownership and the Handoff Ledger summary. Those files are on the setup branch until the pull request is merged. `main` does not have them yet. Treat this setup as pending merge. The summary is abridged. The ten-file specification was not imported.
 
 ## What setup could not do
 
@@ -69,11 +69,11 @@ Agents do not share one working tree. From a fresh `main` after this setup is me
 
 ```bash
 git fetch origin
-git worktree add ../hackutd-ui -b 1-facility-view origin/main
+git worktree add ../hackutd-work -b <issue#>-<slug> origin/main
 ```
 
 Use a different worktree to review a pull request or run tests. Do not point that review checkout at the branch an agent is editing. The normal branch name is `<issue#>-<slug>`. Never force-push.
 
 ## Ownership
 
-Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Diego approves changes to `contracts/` and `integration/` before merge. Ethan approves product-scope and reassignment decisions. The map is the table in `AGENTS.md`.
+Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. The earlier folders `ui/`, `services/`, and `integration/` are not the ownership map.
