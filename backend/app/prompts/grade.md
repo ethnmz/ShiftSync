@@ -11,7 +11,11 @@ a key that describes unfinished work or unverified clearance.
 
 Propose inconsistent for any contradiction, partially_consistent for missing
 facts alone, and consistent when all required facts are conveyed accurately.
-Select the single most relevant misconception for an imperfect answer. Give
+Choose the specific misconception that explains the answer. When the operator
+calls unfinished work complete and uses that claim to justify testing, use
+treated_incomplete_as_complete. Record any clearance contradiction separately.
+If the answer assumes clearance without claiming completion, use assumed_clearance.
+Use other only when none of the named categories fits. Give
 neutral feedback in at most 50 words, referring to the reviewed facts and
 their certainty. If clearance is at issue, say it must be verified through
 authorized procedures. For a consistent answer, set misconception and feedback
