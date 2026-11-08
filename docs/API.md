@@ -19,11 +19,11 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 - `POST /handoffs/{id}/submit` → `HandoffDetail`, or 409 `submit_blocked` with `detail.blockers: [Blocker]` if critical facts are unreviewed or safety questions are pending
 
 ## Shift B: receive, acknowledge, verify
-- `GET /handoffs/{id}/briefing` → `Briefing`
-- `POST /handoffs/{id}/acknowledge` → state `acknowledged` (records an Acknowledgment; **not** verification)
-- `POST /handoffs/{id}/verification/start` → creates checks, returns the first
-- `POST /verification/{vid}/answer` (multipart audio or `{ "text": "..." }`) → `VerificationAttempt` + next check
-- `POST /verification/{vid}/clarified-in-person` `{ "note": "..." }` (lead only)
+- `GET /handoffs/{id}/briefing` → `Briefing` (409 `conflict` before submit). Optional `X-User`: the incoming lead's first view is logged for `shift_b_seconds`.
+- `POST /handoffs/{id}/acknowledge` → `HandoffDetail`, state `acknowledged` (records an Acknowledgment; **not** verification)
+- `POST /handoffs/{id}/verification/start` → `{ "state": "verifying", "check": Check }` (creates checks, returns the first; repeat calls return the current pending check). 409 `nothing_to_verify` if no item qualifies.
+- `POST /verification/{vid}/answer` (multipart audio or `{ "text": "..." }`) → `VerificationAttempt` (includes `next_check` and `handoff_state`). 422 `analysis_failed` if grading fails; no attempt is recorded.
+- `POST /verification/{vid}/clarified-in-person` `{ "note": "..." }` (lead or supervisor; only when the check is `needs_clarification`) → `HandoffDetail`
 
 ## Follow-ups
 - `GET /followups?status=open` (Supervisor, Shift B)
@@ -43,6 +43,7 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
   "budget": { "used": 1, "max": 3 },
   "followups": [ FollowUp ],
   "status_line": { "submitted_at": null, "acknowledged_at": null, "verified_at": null, "open_followups": 2, "unassigned_followups": 1 },
+  "checks": [ Check ],   // attempt history; the answer key is never sent
   "metrics": { … }
 }
 // Item. carried_over_from is null unless the item came from an earlier handoff.
@@ -68,11 +69,14 @@ Base `http://localhost:8000/api`. JSON, ISO 8601 UTC. Frontend types: `frontend/
 // Briefing
 { "headline":"…", "lines":[ { "text":"…","item_id":"I-1","fact_ids":["F-3"],"certainty":"confirmed" } ],
   "items":[ Item ], "open_followups":[ FollowUp ], "disclaimer":"Acknowledging this handoff does not close open issues or confirm equipment is safe to operate." }
-// VerificationAttempt
+// Check
+{ "id":"V-1","item_id":"I-1","question":"What is the current status of UPS-B, and what must be verified before testing?",
+  "status":"pending|verified|needs_clarification|clarified_in_person","attempts":[ { "statement_id","answer_text","verdict","misconception","conveyed_fact_ids","missing_fact_ids","contradictions","feedback","evidence","at" } ] }
+// VerificationAttempt. evidence entries are { statement_id, quote, fact_id }. next_check is a Check (the same one while retrying) or null.
 { "check_id":"V-1","attempt":1,"verdict":"inconsistent","misconception":"treated_incomplete_as_complete",
   "conveyed_fact_ids":[],"missing_fact_ids":["F-1","F-3"],"contradictions":[{"fact_id":"F-1","claimed":"maintenance is complete"}],
   "feedback":"That interpretation is inconsistent with the handoff. …","evidence":[{"statement_id":"S-2","quote":"…"}],
-  "status":"pending","next_check":null }
+  "status":"pending","next_check":null,"handoff_state":"verifying" }
 ```
 
 ## Supervisor
