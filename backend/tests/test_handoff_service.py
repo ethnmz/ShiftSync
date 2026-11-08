@@ -139,6 +139,17 @@ def test_step1_carries_over_crac3(env):
     assert fu["owner"] == {"id": "rob", "name": "Rob Kim"}
 
 
+def test_second_handoff_does_not_take_followups_from_one_in_progress(env):
+    client, analyzer = env
+    hid, r = run_to_review(client, analyzer)  # Maya's handoff, still in review
+    before = {fu["id"] for fu in client.get(f"/api/handoffs/{hid}").json()["followups"]}
+    other = client.post("/api/handoffs", json={"outgoing_id": "maya", "incoming_id": "jordan"},
+                        headers=H("maya")).json()
+    assert other["followups"] == [] and other["items"] == []
+    after = {fu["id"] for fu in client.get(f"/api/handoffs/{hid}").json()["followups"]}
+    assert after == before  # UPS-B, CHL-2 and the carried CRAC-3 stay with the handoff being written
+
+
 def test_shift_a_flow_matches_scenario(env):
     client, analyzer = env
     hid, r = run_to_review(client, analyzer)
