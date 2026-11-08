@@ -5,25 +5,25 @@ import { DEMO_USERS, useUser } from "../session/user";
 import AmbientGlow from "./ambient";
 import { ChartIcon, ClockIcon, DemoIcon, HomeIcon, InboxIcon, Logo, PeopleIcon, PlusCircleIcon } from "./icons";
 
-// Built screens only. History, Supervisor and Evaluation are P1 in
-// docs/PRODUCT.md and are shown as not built rather than linked.
+// Built screens only. History is P1 in docs/PRODUCT.md and is shown as not
+// built rather than linked.
 const HANDOFFS = [
   { to: "/", label: "Home", icon: <HomeIcon />, end: true },
   { to: "/create", label: "New", title: "New handoff", icon: <PlusCircleIcon /> },
   { to: "/receive", label: "Receive", icon: <InboxIcon /> },
+  { to: "/supervisor", label: "Supervisor", icon: <PeopleIcon /> },
+  { to: "/evaluation", label: "Evaluation", icon: <ChartIcon /> },
   // Presenter control for the backend's scripted replay; live mode only.
   ...(FIXTURE_MODE ? [] : [{ to: "/demo", label: "Demo", title: "Demo control", icon: <DemoIcon /> }]),
 ];
-const LATER = [
-  { label: "History", icon: <ClockIcon /> },
-  { label: "Supervisor", icon: <PeopleIcon /> },
-  { label: "Evaluation", icon: <ChartIcon /> },
-];
+const LATER = [{ label: "History", icon: <ClockIcon /> }];
 
 function sectionOf(path: string) {
   if (path.startsWith("/create")) return "New handoff";
   if (path.startsWith("/receive")) return "Receive";
   if (path.startsWith("/demo")) return "Demo control";
+  if (path.startsWith("/supervisor")) return "Supervisor";
+  if (path.startsWith("/evaluation")) return "Evaluation";
   if (path === "/") return "Home";
   return "ShiftSync";
 }

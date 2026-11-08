@@ -217,3 +217,15 @@ export function Panel({
     </section>
   );
 }
+
+// Gray tile with a big number (Harbor's Stat). `hint` explains the number.
+export function StatTile({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "warn" | "danger" | "ok" }) {
+  const color = tone === "warn" ? "text-warn" : tone === "danger" ? "text-danger" : tone === "ok" ? "text-ok" : "";
+  return (
+    <div className="rounded-2xl bg-subtle px-5 py-4">
+      <div className="text-sm font-medium text-ink/80">{label}</div>
+      <div className={`mt-1 text-3xl font-semibold tabular-nums ${color}`}>{value}</div>
+      {hint && <div className="mt-0.5 text-sm text-muted">{hint}</div>}
+    </div>
+  );
+}

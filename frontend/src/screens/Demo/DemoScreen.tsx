@@ -31,7 +31,7 @@ function screenFor(step: number, id: string) {
   if (step <= 5) return `/create/${id}/clarify`;
   if (step === 6) return `/create/${id}/review`;
   if (step <= 11) return `/receive/${id}`;
-  return null; // 12: Supervisor view is P1 and not built yet
+  return "/supervisor";
 }
 
 function Result({ r }: { r: DemoStep }) {
@@ -183,7 +183,6 @@ export default function DemoScreen() {
                           Open as {person(r.actor)?.name.split(" ")[0] ?? r.actor} →
                         </Button>
                       )}
-                      {r && !target && <span className="text-sm text-faint">Supervisor view not built yet</span>}
                     </div>
                   </li>
                 );
