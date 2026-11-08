@@ -6,8 +6,8 @@ import type {
   Handoff,
   HandoffDetail,
   HandoffSummary,
+  StartVerificationResponse,
   VerificationAttempt,
-  VerificationCheck,
 } from "./types";
 import * as sim from "./fixtures/sim";
 
@@ -139,8 +139,8 @@ export function answerQuestion(handoffId: string, questionId: string, input: Ans
   return request(`/handoffs/${handoffId}/questions/${questionId}/answer`, json("dontKnow" in input ? { dont_know: true } : { text: input.text }));
 }
 
-// docs/API.md on main does not say what these return (ethnmz/hackutd2026#10
-// proposes HandoffDetail), so callers refetch GET /handoffs/{id} afterwards.
+// ethnmz/hackutd2026#10 says these return HandoffDetail; main's docs don't
+// say yet, so callers refetch GET /handoffs/{id} afterwards either way.
 export function patchFact(factId: string, patch: FactPatch): Promise<unknown> {
   if (!LIVE) return delay(() => sim.simPatchFact(factId, patch), 250);
   return request(`/facts/${factId}`, { method: "PATCH", body: JSON.stringify(patch) });
@@ -173,7 +173,7 @@ export function acknowledge(handoffId: string): Promise<unknown> {
   return request(`/handoffs/${handoffId}/acknowledge`, { method: "POST" });
 }
 
-export function startVerification(handoffId: string): Promise<VerificationCheck> {
+export function startVerification(handoffId: string): Promise<StartVerificationResponse> {
   if (!LIVE) return delay(sim.simStartVerification, 500);
   return request(`/handoffs/${handoffId}/verification/start`, { method: "POST" });
 }

@@ -138,6 +138,8 @@ export interface HandoffDetail {
   budget: { used: number; max: number };
   followups: FollowUp[];
   status_line: StatusLine;
+  // Verification checks with attempt history (ethnmz/hackutd2026#10, not merged).
+  checks?: VerificationCheck[];
   // Shape not defined in docs/API.md yet.
   metrics: Record<string, unknown>;
 }
@@ -174,17 +176,43 @@ export interface Briefing {
 export type Verdict = "consistent" | "partially_consistent" | "inconsistent";
 export type CheckStatus = "pending" | "verified" | "needs_clarification" | "clarified_in_person";
 
-// Not in docs/API.md. Fields follow DATA_MODEL.md VerificationCheck without
-// the answer key (asked on the board). Returned by verification/start and as
-// VerificationAttempt.next_check.
+// Shift B shapes from ethnmz/hackutd2026#10 (not merged yet). The answer key
+// never reaches the client.
+export interface CheckAttempt {
+  statement_id: string;
+  answer_text: string;
+  verdict: Verdict;
+  misconception: string | null;
+  conveyed_fact_ids: string[];
+  missing_fact_ids: string[];
+  contradictions: { fact_id: string; claimed: string }[];
+  feedback: string;
+  evidence: Evidence[];
+  at: string;
+}
+
+export interface Evidence {
+  statement_id: string;
+  quote: string;
+  fact_id?: string;
+}
+
 export interface VerificationCheck {
   id: string;
   item_id: string;
   question: string;
   status: CheckStatus;
-  attempts?: VerificationAttempt[];
+  attempts: CheckAttempt[];
 }
 
+// POST /handoffs/{id}/verification/start
+export interface StartVerificationResponse {
+  state: HandoffState;
+  check: VerificationCheck;
+}
+
+// POST /verification/{vid}/answer. next_check is the same check while
+// retrying, the next one when this one closes, or null.
 export interface VerificationAttempt {
   check_id: string;
   attempt: number;
@@ -194,9 +222,9 @@ export interface VerificationAttempt {
   missing_fact_ids: string[];
   contradictions: { fact_id: string; claimed: string }[];
   feedback: string;
-  evidence: { statement_id: string; quote: string }[];
+  evidence: Evidence[];
   status: CheckStatus;
   next_check: VerificationCheck | null;
-  // The answer as recorded (DATA_MODEL.md Attempt.answer_text); optional in the API example.
+  handoff_state?: HandoffState;
   answer_text?: string;
 }

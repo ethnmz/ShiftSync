@@ -8,6 +8,7 @@ import type {
   HandoffDetail,
   HandoffSummary,
   Question,
+  StartVerificationResponse,
   Verdict,
   VerificationAttempt,
   VerificationCheck,
@@ -122,7 +123,9 @@ function emptyDraft(): HandoffDetail {
 let current: HandoffDetail = emptyDraft();
 
 function snapshot(): HandoffDetail {
-  return structuredClone(current);
+  const s = structuredClone(current);
+  if (checks.length) s.checks = checks.map(publicCheck);
+  return s;
 }
 
 function nextStatementId() {
@@ -268,7 +271,7 @@ const DISCLAIMER =
 
 const SUBMITTED_STATES = ["submitted", "acknowledged", "verifying", "verified", "verified_with_assistance"];
 
-type SimCheck = VerificationCheck & { attempts: VerificationAttempt[] };
+type SimCheck = Omit<VerificationCheck, "attempts"> & { attempts: VerificationAttempt[]; at: string[] };
 let checks: SimCheck[] = [];
 
 function recount() {
@@ -340,17 +343,36 @@ const CHECK_SCRIPT = [
   { id: "V-2", item_id: "I-3", question: "What do we know about the Chiller 2 cooling inspection, and who is following up?" },
 ];
 
+// Check as the API sends it: attempt history in the compact Check shape.
 function publicCheck(c: SimCheck): VerificationCheck {
-  return structuredClone(c);
+  return structuredClone({
+    id: c.id,
+    item_id: c.item_id,
+    question: c.question,
+    status: c.status,
+    attempts: c.attempts.map((a, i) => ({
+      statement_id: a.evidence[0]?.statement_id ?? "",
+      answer_text: a.answer_text ?? "",
+      verdict: a.verdict,
+      misconception: a.misconception,
+      conveyed_fact_ids: a.conveyed_fact_ids,
+      missing_fact_ids: a.missing_fact_ids,
+      contradictions: a.contradictions,
+      feedback: a.feedback,
+      evidence: a.evidence,
+      at: c.at[i],
+    })),
+  });
 }
 
-export function simStartVerification(): VerificationCheck {
+export function simStartVerification(): StartVerificationResponse {
   if (current.state !== "acknowledged" && current.state !== "verifying")
     throw new Error("Acknowledge the handoff before starting the understanding check.");
-  if (checks.length === 0) checks = CHECK_SCRIPT.map((c) => ({ ...c, status: "pending" as CheckStatus, attempts: [] }));
+  if (checks.length === 0) checks = CHECK_SCRIPT.map((c) => ({ ...c, status: "pending" as CheckStatus, attempts: [], at: [] }));
   current.state = "verifying";
+  // Repeat calls return the current open check.
   const next = checks.find((c) => c.status === "pending" || c.status === "needs_clarification") ?? checks[0];
-  return publicCheck(next);
+  return { state: current.state, check: publicCheck(next) };
 }
 
 const factById = (id: string) => current.items.flatMap((i) => i.facts).find((f) => f.id === id);
@@ -411,7 +433,7 @@ export function simAnswerVerification(checkId: string, text: string | null): Ver
   const evidence = evidenceIds
     .map((id) => factById(id))
     .filter((f): f is Fact => !!f)
-    .map((f) => ({ statement_id: f.source_statement_id, quote: f.quote }));
+    .map((f) => ({ statement_id: f.source_statement_id, quote: f.quote, fact_id: f.id }));
 
   const attemptNo = c.attempts.length + 1;
   const status: CheckStatus = verdict === "consistent" ? "verified" : attemptNo >= ATTEMPT_LIMIT ? "needs_clarification" : "pending";
@@ -431,8 +453,10 @@ export function simAnswerVerification(checkId: string, text: string | null): Ver
     answer_text: answer,
   };
   c.attempts.push(attempt);
-  if (status !== "pending") attempt.next_check = nextOpenCheck(c.id);
+  c.at.push(new Date().toISOString());
   finishIfDone();
+  attempt.next_check = status === "pending" ? publicCheck(c) : nextOpenCheck(c.id);
+  attempt.handoff_state = current.state;
   return structuredClone(attempt);
 }
 
@@ -448,15 +472,15 @@ function finishIfDone() {
   current.status_line.verified_at = VERIFIED_AT;
 }
 
-export function simClarifiedInPerson(checkId: string, note: string, userId: string): VerificationCheck | null {
+export function simClarifiedInPerson(checkId: string, note: string, userId: string): HandoffDetail {
   const p = person(userId);
-  if (p?.role !== "lead") throw new Error("Only a lead can mark a check clarified in person.");
+  if (p?.role !== "lead" && p?.role !== "supervisor") throw new Error("Only a lead or supervisor can mark a check clarified in person.");
   const c = checks.find((x) => x.id === checkId);
   if (!c || c.status !== "needs_clarification") throw new Error("This check does not need in-person clarification.");
   if (!note.trim()) throw new Error("Add a short note about what was clarified.");
   c.status = "clarified_in_person";
   finishIfDone();
-  return nextOpenCheck(c.id);
+  return snapshot();
 }
 
 function findFollowup(id: string): FollowUp {

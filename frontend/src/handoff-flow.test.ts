@@ -102,16 +102,21 @@ describe("receive", () => {
 
   it("catches a wrong answer, allows a retry, and verifies", () => {
     sim.simAcknowledge("jordan");
-    const v1 = sim.simStartVerification();
+    const { check: v1, state } = sim.simStartVerification();
+    expect(state).toBe("verifying");
     const a1 = sim.simAnswerVerification(v1.id, "Maintenance is complete, so we can start testing.");
     expect(a1.verdict).toBe("inconsistent");
     expect(a1.status).toBe("pending");
+    expect(a1.next_check?.id).toBe(v1.id); // same check while retrying
+    expect(a1.evidence.every((e) => e.fact_id)).toBe(true);
     expect(a1.feedback).toMatch(/authorized procedures/);
     expect(a1.feedback).not.toMatch(/safe|you may proceed/i);
     expect(a1.evidence.length).toBeGreaterThan(0);
     const a2 = sim.simAnswerVerification(v1.id, "Not finished: the load test is pending and it's in bypass, not cleared until sign-off.");
     expect(a2.verdict).toBe("consistent");
     expect(a2.next_check?.id).toBe("V-2");
+    // The handoff detail carries the attempt history, so a reload can resume.
+    expect(sim.simGet().checks?.[0].attempts.length).toBe(2);
     sim.simAnswerVerification("V-2", "Chiller 2 result is unknown, no report yet.");
     const h = sim.simGet();
     expect(h.state).toBe("verified");
@@ -121,14 +126,15 @@ describe("receive", () => {
 
   it("after two misses a lead clarifies in person and the result is assisted", () => {
     sim.simAcknowledge("jordan");
-    const v1 = sim.simStartVerification();
+    const { check: v1 } = sim.simStartVerification();
     sim.simAnswerVerification(v1.id, "It's done.");
     const a2 = sim.simAnswerVerification(v1.id, "It's complete.");
     expect(a2.status).toBe("needs_clarification");
     expect(() => sim.simAnswerVerification(v1.id, "third try")).toThrow(/closed/);
-    expect(() => sim.simClarifiedInPerson(v1.id, "Walked through it", "dana")).toThrow(/lead/);
+    expect(() => sim.simClarifiedInPerson(v1.id, "Walked through it", "sam")).toThrow(/lead or supervisor/);
     sim.simClarifiedInPerson(v1.id, "Walked Jordan through the load test status", "jordan");
-    sim.simAnswerVerification("V-2", "Chiller 2 is unknown, no report.");
+    const v2 = sim.simAnswerVerification("V-2", "Chiller 2 is unknown, no report.");
+    expect(v2.handoff_state).toBe("verified_with_assistance");
     expect(sim.simGet().state).toBe("verified_with_assistance");
   });
 

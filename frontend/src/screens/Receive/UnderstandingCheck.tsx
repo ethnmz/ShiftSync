@@ -1,7 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { answerVerification, clarifiedInPerson, errorMessage, startVerification, type StatementInput } from "../../api/client";
 import type { HandoffDetail, Verdict, VerificationAttempt, VerificationCheck } from "../../api/types";
+import { canAssign } from "../../session/user";
 import CertaintyBadge from "../../components/CertaintyBadge";
 import QuestionCard from "../../components/QuestionCard";
 import { Button, Card, Chip, Notice, type Tone } from "../../components/ui";
@@ -9,6 +10,18 @@ import { formatClock } from "../../labels";
 import { useUser } from "../../session/user";
 
 const ATTEMPT_LIMIT = 2; // config/slots.yaml budgets.verification_attempts
+
+// A Check's stored history as attempt results. Only the last attempt carries
+// the check's current status; earlier ones were retried.
+function toAttempts(c: VerificationCheck): VerificationAttempt[] {
+  return c.attempts.map((a, i) => ({
+    ...a,
+    check_id: c.id,
+    attempt: i + 1,
+    status: i === c.attempts.length - 1 ? c.status : "pending",
+    next_check: null,
+  }));
+}
 
 const VERDICT: Record<Verdict, { tone: Tone; icon: string; label: string }> = {
   consistent: { tone: "ok", icon: "✓", label: "Consistent with the handoff" },
@@ -98,14 +111,27 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
   const [check, setCheck] = useState<VerificationCheck | null>(null);
   const [attempts, setAttempts] = useState<VerificationAttempt[]>([]);
   const [lastAnswer, setLastAnswer] = useState("");
-  const [closedCount, setClosedCount] = useState(0);
+  const [localClosed, setLocalClosed] = useState(0);
   const [note, setNote] = useState("");
+
+  function show(c: VerificationCheck | null) {
+    setCheck(c);
+    setAttempts(c ? toAttempts(c) : []);
+    answer.reset();
+  }
+
+  // Resume after a reload: HandoffDetail.checks holds each check's attempt
+  // history (ethnmz/hackutd2026#10), so pick up the open one.
+  const serverOpen = handoff.checks?.find((c) => c.status === "pending" || c.status === "needs_clarification") ?? null;
+  useEffect(() => {
+    if (!check && serverOpen && handoff.state === "verifying") show(serverOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverOpen?.id, handoff.state]);
 
   const start = useMutation({
     mutationFn: () => startVerification(handoff.id),
-    onSuccess: (c) => {
-      setCheck(c);
-      setAttempts(c.attempts ?? []);
+    onSuccess: (r) => {
+      show(r.check);
       onChanged();
     },
   });
@@ -121,17 +147,23 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
     mutationFn: () => clarifiedInPerson(check!.id, note.trim()),
     onSuccess: () => {
       setNote("");
+      setLocalClosed((n) => n + 1);
+      // The response is HandoffDetail; the next open check comes from the
+      // refreshed handoff.checks via the resume effect above.
+      setCheck(null);
+      setAttempts([]);
       onChanged();
-      next(last?.next_check ?? null);
     },
   });
 
   function next(c: VerificationCheck | null) {
-    setClosedCount((n) => n + 1);
-    setCheck(c);
-    setAttempts(c?.attempts ?? []);
-    answer.reset();
+    setLocalClosed((n) => n + 1);
+    show(c);
   }
+
+  // Position of the current check: from the server's list when it sends one.
+  const serverIndex = handoff.checks?.findIndex((c) => c.id === check?.id) ?? -1;
+  const checkNumber = serverIndex >= 0 ? serverIndex + 1 : localClosed + 1;
 
   const last = attempts[attempts.length - 1];
   const status = last?.status ?? check?.status ?? "pending";
@@ -179,7 +211,7 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
           key={`${check.id}-${attempts.length}`}
           eyebrow={
             <span className="flex flex-wrap items-center gap-2">
-              Check {closedCount + 1}
+              Check {checkNumber}
               {itemTitle && <span>· {itemTitle}</span>}
               {canRetry && (
                 <Chip tone="neutral">
@@ -216,10 +248,10 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
           <Card className="flex flex-col gap-3 p-4">
             <h3 className="font-semibold">Talk to {handoff.outgoing.name}, then mark this clarified in person</h3>
             <p className="text-sm text-muted">
-              Two attempts didn't match the handoff. A lead clarifies it face to face. This is logged and the handoff is marked "verified with
+              Two attempts didn't match the handoff. A lead or supervisor clarifies it face to face. This is logged and the handoff is marked "verified with
               assistance".
             </p>
-            {user.role === "lead" ? (
+            {canAssign(user) ? (
               <form
                 className="flex flex-col gap-2"
                 onSubmit={(e) => {
@@ -243,7 +275,7 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
                 </div>
               </form>
             ) : (
-              <Notice tone="warn">Only a lead can mark a check clarified in person. Switch the demo user to a lead.</Notice>
+              <Notice tone="warn">Only a lead or supervisor can mark a check clarified in person. Switch the demo user.</Notice>
             )}
           </Card>
         )}
