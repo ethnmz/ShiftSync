@@ -26,7 +26,7 @@ class Transcript:
 
 def transcribe(audio_path: str | Path) -> Transcript:
     """Transcribe one recording. Raises STTError instead of ever returning guessed or empty text."""
-    # Stopgap until backend/app/config.py exists: read STT_PROVIDER directly.
+    # app/config.py has no STT settings, so read STT_PROVIDER directly.
     name = (os.environ.get("STT_PROVIDER") or "openai").strip().lower()
     backend = providers.PROVIDERS.get(name)
     if backend is None:
