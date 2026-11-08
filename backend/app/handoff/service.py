@@ -299,13 +299,19 @@ def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: Cl
     registry = config.assets()
     scope_item = items.get(q.item_id) if q else None
 
+    asked: set[str] = set()
+    if q is not None:
+        asked = set(q.slots) | ({q.target_slot} if q.target_slot else set())
+
     def find_target(ext: Any) -> Item | None:
         link = getattr(ext, "link_item_id", None)
         if link in items:
             return items[link]
         asset = ext.asset_id if getattr(ext, "asset_id", None) in registry else None
-        if scope_item is not None and ext.kind == scope_item.kind and (
-                asset is None or not scope_item.asset_ids or asset in scope_item.asset_ids):
+        # An answer to a question about an item updates that item, even if the model
+        # labels it another kind ("bypass" for UPS-B's clearance answer). Only a
+        # different named asset makes it a separate item.
+        if scope_item is not None and (asset is None or not scope_item.asset_ids or asset in scope_item.asset_ids):
             return scope_item
         if asset:
             for it in items.values():
@@ -329,8 +335,17 @@ def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: Cl
                     target.title = ext.title or target.title  # vague mention resolved to equipment
                 target.asset_ids = [*target.asset_ids, asset]
             target.is_decision = target.is_decision or bool(getattr(ext, "is_decision", False))
+        mismatched = target is scope_item and ext.kind != target.kind
+        filled = {f.slot for f in ItemView.build(target, item_facts(session, [target.id])).facts}
         for ef in getattr(ext, "facts", []) or []:
-            _add_fact(session, h, stmt, target, ef)
+            slot = ef.slot
+            if mismatched and slot in filled and slot not in asked:
+                # Same slot name, different kind of item, and not what was asked: keep both
+                # facts instead of letting e.g. a bypass "rationale" replace UPS-B's own.
+                slot = f"{ext.kind}_{ef.slot}"
+                audit(session, "fact_slot_renamed", handoff_id=h.id, item_id=target.id,
+                      slot=ef.slot, stored_as=slot, extracted_kind=ext.kind)
+            _add_fact(session, h, stmt, target, ef, slot=slot)
 
     for claim in getattr(extraction, "unscoped_claims", []) or []:
         existing = [i for i in items.values() if i.kind == "general_claim"]
@@ -348,20 +363,21 @@ def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: Cl
                          certainty_reason=reason or "as stated", source_statement_id=stmt.id, quote=claim))
 
 
-def _add_fact(session: Session, h: Handoff, stmt: Statement, item: Item, ef: Any) -> None:
+def _add_fact(session: Session, h: Handoff, stmt: Statement, item: Item, ef: Any, slot: str | None = None) -> None:
+    slot = slot or ef.slot
     quote = (getattr(ef, "quote", "") or "").strip()
     if not verify_quote(quote, stmt.text):
         audit(session, "fact_dropped", handoff_id=h.id, item_id=item.id, reason="quote not found",
-              slot=ef.slot, quote=quote)
+              slot=slot, quote=quote)
         return
     normalized = getattr(ef, "normalized", None)
     why = _guard_fact(normalized, quote)
     if why:
-        audit(session, "fact_dropped", handoff_id=h.id, item_id=item.id, reason=why, slot=ef.slot, quote=quote)
+        audit(session, "fact_dropped", handoff_id=h.id, item_id=item.id, reason=why, slot=slot, quote=quote)
         return
     proposed = ef.certainty if ef.certainty in CERTAINTIES else "unverified"
     certainty, reason = floor_certainty(proposed, quote)
-    fact = Fact(id=next_id(session, Fact), item_id=item.id, slot=ef.slot, value=ef.value, normalized=normalized,
+    fact = Fact(id=next_id(session, Fact), item_id=item.id, slot=slot, value=ef.value, normalized=normalized,
                 certainty=certainty, certainty_reason=reason or "operator stated", review_state="ai_extracted",
                 source_statement_id=stmt.id, quote=quote)
     session.add(fact)
@@ -369,9 +385,9 @@ def _add_fact(session: Session, h: Handoff, stmt: Statement, item: Item, ef: Any
         audit(session, "certainty_floored", handoff_id=h.id, item_id=item.id, fact_id=fact.id,
               proposed=proposed, certainty=certainty, reason=reason)
     for old in item_facts(session, [item.id]):
-        if old.slot == ef.slot and old.superseded_by is None and old.id != fact.id:
+        if old.slot == slot and old.superseded_by is None and old.id != fact.id:
             old.superseded_by = fact.id
-    audit(session, "fact_extracted", handoff_id=h.id, item_id=item.id, fact_id=fact.id, slot=ef.slot)
+    audit(session, "fact_extracted", handoff_id=h.id, item_id=item.id, fact_id=fact.id, slot=slot)
 
     # Owner named in Shift A's own words → set it on the follow-up later (rules: owner_sources).
     owner = fu_rules.owner_from_quote(getattr(ef, "owner_mentioned", None), quote, h.incoming_id)
