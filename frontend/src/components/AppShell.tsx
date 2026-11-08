@@ -2,74 +2,100 @@ import { useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { FIXTURE_MODE } from "../api/client";
 import { DEMO_USERS, useUser } from "../session/user";
+import { ChartIcon, ClockIcon, HomeIcon, InboxIcon, PeopleIcon, PlusCircleIcon } from "./icons";
 
 // Built screens only. History, Supervisor and Evaluation are P1 in
 // docs/PRODUCT.md and are listed as not built rather than linked.
-const NAV = [
-  { to: "/create", label: "New handoff", icon: "＋" },
-  { to: "/receive", label: "Receive", icon: "↘" },
+const HANDOFFS = [
+  { to: "/", label: "Home", icon: <HomeIcon />, end: true },
+  { to: "/create", label: "New handoff", icon: <PlusCircleIcon /> },
+  { to: "/receive", label: "Receive", icon: <InboxIcon /> },
 ];
-const LATER = ["History", "Supervisor", "Evaluation"];
+const LATER = [
+  { label: "History", icon: <ClockIcon /> },
+  { label: "Supervisor", icon: <PeopleIcon /> },
+  { label: "Evaluation", icon: <ChartIcon /> },
+];
+
+export function initials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { user, setUser } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
 
-
-  const nav = (
-    <nav aria-label="Main" className="flex flex-col gap-0.5">
-      {NAV.map((n) => (
-        <NavLink
-          key={n.to}
-          to={n.to}
-          onClick={() => setMenuOpen(false)}
-          className={({ isActive }) =>
-            `flex min-h-[40px] items-center gap-2.5 rounded-md px-2.5 text-sm font-medium ${
-              isActive ? "bg-accent/10 text-accent" : "text-muted hover:bg-subtle hover:text-ink"
-            }`
-          }
-        >
-          <span aria-hidden className="w-4 text-center">
-            {n.icon}
-          </span>
-          {n.label}
-        </NavLink>
-      ))}
-      <p className="mt-4 px-2.5 text-xs font-semibold uppercase tracking-wide text-faint">Not built yet (P1)</p>
-      {LATER.map((l) => (
-        <span key={l} className="flex min-h-[36px] items-center gap-2.5 px-2.5 text-sm text-faint" aria-disabled="true">
-          <span aria-hidden className="w-4 text-center">·</span>
-          {l}
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[26px] font-bold tracking-tighter">shiftsync.</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-[11px] font-semibold text-accent" aria-hidden>
+          {initials(user.name)}
         </span>
-      ))}
-    </nav>
-  );
-
-  const footer = (
-    <div className="flex flex-col gap-3 border-t border-line pt-3">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="demo-user" className="px-0.5 text-xs font-medium text-muted">
-          Demo user <span className="text-faint">(not sign-in)</span>
-        </label>
-        <select
-          id="demo-user"
-          value={user.id}
-          onChange={(e) => setUser(e.target.value)}
-          className="min-h-[40px] rounded-md border border-line-strong bg-surface px-2 text-sm"
-        >
-          {DEMO_USERS.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name} · {u.role}
-              {u.team ? `, ${u.team} shift` : ""}
-            </option>
-          ))}
-        </select>
       </div>
-      <div className="flex items-center justify-between gap-2">
+
+      {/* Workspace block: who is using the demo and on which shift. */}
+      <div className="mt-6 flex items-center gap-3 px-1">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-muted" aria-hidden>
+          <PeopleIcon />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm text-muted">{user.team ? `${user.team[0].toUpperCase()}${user.team.slice(1)} shift` : "All shifts"}</p>
+          <label htmlFor="demo-user" className="sr-only">
+            Demo user (not sign-in)
+          </label>
+          <select
+            id="demo-user"
+            value={user.id}
+            onChange={(e) => setUser(e.target.value)}
+            className="-ml-1 max-w-full rounded-md bg-transparent px-1 text-base font-medium hover:bg-subtle"
+            title="Demo user, not sign-in"
+          >
+            {DEMO_USERS.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} · {u.role}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <hr className="mx-1 mt-5 border-line" />
+
+      <nav aria-label="Main" className="mt-5 flex flex-1 flex-col gap-1 overflow-y-auto">
+        <p className="px-1 pb-2 text-sm uppercase tracking-wide text-muted">Handoffs</p>
+        {HANDOFFS.map((n) => (
+          <NavLink
+            key={n.to}
+            to={n.to}
+            end={n.end}
+            onClick={() => setMenuOpen(false)}
+            className={({ isActive }) =>
+              `flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-[15px] ${isActive ? "bg-subtle font-semibold text-ink" : "text-ink/85 hover:bg-subtle"}`
+            }
+          >
+            {n.icon}
+            {n.label}
+          </NavLink>
+        ))}
+        <p className="px-1 pb-2 pt-5 text-sm uppercase tracking-wide text-muted">Not built yet</p>
+        {LATER.map((l) => (
+          <span key={l.label} aria-disabled="true" className="flex min-h-[44px] items-center gap-3 px-3 text-[15px] text-faint">
+            {l.icon}
+            {l.label}
+            <span className="rounded-full border border-line px-2 text-xs">P1</span>
+          </span>
+        ))}
+      </nav>
+
+      <hr className="mx-1 border-line" />
+      <div className="mt-4 px-1">
         <span
-          className={`rounded-md border px-1.5 py-0.5 text-xs font-semibold ${
-            FIXTURE_MODE ? "border-warn/30 bg-warn/10 text-warn" : "border-ok/30 bg-ok/10 text-ok"
-          }`}
+          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${FIXTURE_MODE ? "bg-warn/10 text-warn" : "bg-ok/10 text-ok"}`}
           title={FIXTURE_MODE ? "No backend. Scripted fixtures replay demo/scenario.json." : "Calling the FastAPI backend at /api"}
         >
           {FIXTURE_MODE ? "Offline demo data" : "Live API"}
@@ -78,38 +104,26 @@ export default function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 
-  const brand = (
-    <div className="flex flex-col">
-      <span className="text-base font-bold tracking-tight">ShiftSync</span>
-      <span className="text-xs text-faint">Less chaos. Clearer communication. Faster handoffs.</span>
-    </div>
-  );
-
   return (
-    <div className="flex min-h-screen">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 border-r border-line bg-surface px-3 py-4 md:flex">
-        <div className="px-2.5">{brand}</div>
-        <div className="flex-1 overflow-y-auto">{nav}</div>
-        {footer}
-      </aside>
+    <div className="flex min-h-screen bg-bg">
+      <aside className="sticky top-0 hidden h-screen w-[272px] shrink-0 border-r border-line bg-surface px-5 py-6 md:block">{sidebar}</aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-2 md:hidden">
-          {brand}
+          <span className="text-xl font-bold tracking-tighter">shiftsync.</span>
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            className="min-h-touch min-w-touch rounded-md border border-line-strong text-sm"
+            className="min-h-touch rounded-lg border border-line-strong px-4 text-sm font-medium"
           >
             {menuOpen ? "Close" : "Menu"}
           </button>
         </header>
         {menuOpen && (
-          <div id="mobile-menu" className="flex flex-col gap-4 border-b border-line bg-surface px-4 py-3 md:hidden">
-            {nav}
-            {footer}
+          <div id="mobile-menu" className="border-b border-line bg-surface px-4 py-4 md:hidden">
+            {sidebar}
           </div>
         )}
         <main className="flex min-w-0 flex-1 flex-col">{children}</main>
@@ -118,7 +132,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-// Page title row shared by every screen.
+// Page title row shared by inner screens.
 export function PageHeader({ title, meta, actions }: { title: ReactNode; meta?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line bg-surface px-4 py-4 lg:px-8">

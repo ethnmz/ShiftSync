@@ -291,8 +291,9 @@ export function simLoadSubmittedDemo(): HandoffSummary {
   return simList()[0];
 }
 
+// Every handoff the sim holds, drafts included; screens filter by state.
 export function simList(): HandoffSummary[] {
-  if (!SUBMITTED_STATES.includes(current.state)) return [];
+  if (current.statements.length === 0 && !SUBMITTED_STATES.includes(current.state)) return [];
   const { id, state, outgoing, incoming, status_line } = snapshot();
   return [{ id, state, outgoing, incoming, status_line }];
 }
@@ -486,4 +487,8 @@ export function simCloseFollowup(id: string, text: string, userId: string): null
   f.status = "closed";
   recount();
   return null;
+}
+
+export function simListFollowups(status?: string): FollowUp[] {
+  return snapshot().followups.filter((f) => !status || f.status === status);
 }

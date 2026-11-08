@@ -152,7 +152,7 @@ export default function CreateFlow() {
     <FlowContext.Provider value={value}>
       <div className="flex min-h-screen flex-col bg-bg">
         <header className="sticky top-0 z-30 grid grid-cols-[auto_1fr_auto] items-center gap-2 bg-bg/90 px-3 py-3 sm:grid-cols-[1fr_auto_1fr] sm:gap-3 sm:px-6 backdrop-blur sm:px-6">
-          <Link to="/receive" className="flex items-center gap-2 justify-self-start" aria-label="ShiftSync home">
+          <Link to="/" className="flex items-center gap-2 justify-self-start" aria-label="ShiftSync home">
             <Mark />
             <span className="hidden text-base font-bold tracking-tight sm:inline">ShiftSync</span>
           </Link>

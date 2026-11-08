@@ -138,7 +138,7 @@ export default function RecordPage() {
           </div>
           <button
             type="button"
-            onClick={() => navigate("/receive")}
+            onClick={() => navigate("/")}
             aria-label="Leave the handoff (it stays saved)"
             className="absolute right-3 flex h-9 w-9 items-center justify-center rounded-lg text-lg text-muted hover:bg-subtle hover:text-ink"
           >

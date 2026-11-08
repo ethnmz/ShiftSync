@@ -2,6 +2,7 @@ import type {
   Blocker,
   Briefing,
   FactPatch,
+  FollowUp,
   Handoff,
   HandoffDetail,
   HandoffSummary,
@@ -189,6 +190,13 @@ export function clarifiedInPerson(checkId: string, note: string): Promise<unknow
 }
 
 // ---- Follow-ups -----------------------------------------------------------
+
+// GET /followups?status=open (docs/API.md). Rows are FollowUp; the API shape
+// has no handoff id, so callers link to the Receive list.
+export function listFollowups(status = "open"): Promise<FollowUp[]> {
+  if (!LIVE) return delay(() => sim.simListFollowups(status), 150);
+  return request(`/followups?status=${encodeURIComponent(status)}`);
+}
 
 export function assignFollowup(id: string, ownerId: string, deadline: string | null): Promise<unknown> {
   if (!LIVE) return delay(() => sim.simAssignFollowup(id, ownerId, deadline, currentUser), 400);
