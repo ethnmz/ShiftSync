@@ -31,11 +31,12 @@ async def _request(provider, model, system, user, schema):
     async with AsyncOpenAI(api_key=os.environ["NVIDIA_API_KEY"],
                            base_url=os.environ["NVIDIA_BASE_URL"]) as client:
         response = await client.chat.completions.create(
-            model=model, temperature=0,
+            model=model, temperature=0, max_tokens=4096,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             messages=[{"role": "system", "content": system + "\nJSON schema: " + json.dumps(schema)},
                       {"role": "user", "content": user}],
         )
-    raw = response.choices[0].message.content or ""
+    raw = (response.choices[0].message.content if response.choices else "") or ""
     raw = raw.strip()
     if not raw.startswith(("{", "```")) and "</think>" in raw:
         raw = raw.partition("</think>")[2].strip()
@@ -60,9 +61,12 @@ async def complete_json(task: str, system: str, user: str, schema: type[T]) -> T
             status = "invalid_output"
             if attempt == 2:
                 raise
-            user += "\nCorrect the following validation errors and return JSON only: " + str(
-                exc.errors(include_input=False, include_url=False)
-            )
+            if not raw.strip():
+                user += "\nYour reply contained no final answer. Return the requested JSON in the message content."
+            else:
+                user += "\nCorrect the following validation errors and return JSON only: " + str(
+                    exc.errors(include_input=False, include_url=False)
+                )
         finally:
             LOG.parent.mkdir(parents=True, exist_ok=True)
             with LOG.open("a", encoding="utf-8") as stream:
