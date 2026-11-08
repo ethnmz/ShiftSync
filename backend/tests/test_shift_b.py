@@ -5,7 +5,29 @@ from app import clock
 from app.handoff.analyzer import Grade
 from app.handoff.language import ensure_clearance_sentence, violations
 from tests.conftest import make_fact, make_item, view
-from tests.test_handoff_service import H, STEP, _item, env, run_to_review  # noqa: F401  (env is a fixture)
+from tests.test_handoff_service import H, STEP, _item, _session, env, run_to_review  # noqa: F401  (env is a fixture)
+
+
+class _Resp:
+    def __init__(self, status_code, body):
+        self.status_code, self._body = status_code, body
+
+    def json(self):
+        return self._body
+
+
+def answer(client, check_id, text, user):
+    """Call answer_check directly (the HTTP route is Diego's, in app/routes/ingest.py)."""
+    import asyncio
+
+    from app.handoff import receive
+    from app.handoff.service import ServiceError
+    with _session() as s:
+        try:
+            out = asyncio.run(receive.answer_check(s, check_id, user, text, analyzer=client.app.state.analyzer))
+            return _Resp(200, out)
+        except ServiceError as e:
+            return _Resp(e.status, {"detail": {"code": e.code, "message": e.message, **e.payload}})
 
 
 def submitted(client, analyzer):
@@ -88,7 +110,7 @@ def test_full_shift_b_flow(env):
     analyzer.push_grade(Grade(verdict="partially_consistent", missing_fact_ids=[fact_id(ups, "remaining_work")],
                               contradictions=[{"fact_id": fact_id(ups, "work_status"), "claimed": "maintenance is complete"}],
                               misconception="treated_incomplete_as_complete"))
-    a1 = client.post(f"/api/verification/{v1['id']}/answer", json={"text": STEP[9]["text"]}, headers=H("jordan")).json()
+    a1 = answer(client, v1['id'], STEP[9]["text"], "jordan").json()
     assert a1["verdict"] == "inconsistent" and a1["misconception"] == "treated_incomplete_as_complete"
     fb = a1["feedback"].lower()
     for must in ["inconsistent with the handoff", "incomplete", "authorized procedures"]:
@@ -103,7 +125,7 @@ def test_full_shift_b_flow(env):
     # Step 10: second attempt correct
     clock.set_now(STEP[10]["at"])
     analyzer.push_grade(Grade(verdict="consistent", conveyed_fact_ids=[fact_id(ups, "work_status")]))
-    a2 = client.post(f"/api/verification/{v1['id']}/answer", json={"text": STEP[10]["text"]}, headers=H("jordan")).json()
+    a2 = answer(client, v1['id'], STEP[10]["text"], "jordan").json()
     assert (a2["verdict"], a2["status"], a2["attempt"]) == ("consistent", "verified", 2)
     v2 = a2["next_check"]
     assert v2["item_id"] == chl["id"]
@@ -111,7 +133,7 @@ def test_full_shift_b_flow(env):
     # Step 11: Chiller 2, right first time → handoff verified
     clock.set_now(STEP[11]["at"])
     analyzer.push_grade(Grade(verdict="consistent"))
-    a3 = client.post(f"/api/verification/{v2['id']}/answer", json={"text": STEP[11]["text"]}, headers=H("jordan")).json()
+    a3 = answer(client, v2['id'], STEP[11]["text"], "jordan").json()
     assert a3["attempt"] == 1 and a3["handoff_state"] == "verified" and a3["next_check"] is None
     d11 = client.get(f"/api/handoffs/{hid}").json()
     assert d11["state"] == "verified"
@@ -142,10 +164,9 @@ def test_two_misses_then_clarified_in_person(env):
     wrong = Grade(verdict="inconsistent", contradictions=[{"fact_id": fact_id(ups, "work_status"), "claimed": "done"}])
     for _ in range(2):
         analyzer.push_grade(wrong)
-        a = client.post(f"/api/verification/{v1['id']}/answer", json={"text": "It's done."}, headers=H("jordan")).json()
+        a = answer(client, v1['id'], "It's done.", "jordan").json()
     assert a["status"] == "needs_clarification"
-    assert client.post(f"/api/verification/{v1['id']}/answer", json={"text": "again"},
-                       headers=H("jordan")).status_code == 409
+    assert answer(client, v1['id'], "again", "jordan").status_code == 409
     body = {"note": "Talked with Maya; load test still pending"}
     assert client.post(f"/api/verification/{v1['id']}/clarified-in-person", json=body,
                        headers=H("sam")).status_code == 403
@@ -153,14 +174,14 @@ def test_two_misses_then_clarified_in_person(env):
     assert d2["state"] == "verifying"  # the Chiller 2 check is still open
     v2 = [c for c in d2["checks"] if c["status"] == "pending"][0]
     analyzer.push_grade(Grade(verdict="consistent"))
-    a = client.post(f"/api/verification/{v2['id']}/answer", json={"text": "ok"}, headers=H("jordan")).json()
+    a = answer(client, v2['id'], "ok", "jordan").json()
     assert a["handoff_state"] == "verified_with_assistance"
 
 
 def test_grader_failure_records_no_attempt(env):
     client, analyzer = env
     hid, d, start = to_verifying(client, analyzer)
-    r = client.post(f"/api/verification/{start['check']['id']}/answer", json={"text": "x"}, headers=H("jordan"))
+    r = answer(client, start['check']['id'], "x", "jordan")
     assert r.status_code == 422 and r.json()["detail"]["code"] == "analysis_failed"
     d2 = client.get(f"/api/handoffs/{hid}").json()
     assert d2["checks"][0]["attempts"] == [] and d2["state"] == "verifying"
@@ -170,10 +191,10 @@ def test_only_incoming_answers_and_hallucinated_ids_ignored(env):
     client, analyzer = env
     hid, d, start = to_verifying(client, analyzer)
     vid = start["check"]["id"]
-    assert client.post(f"/api/verification/{vid}/answer", json={"text": "x"}, headers=H("maya")).status_code == 403
+    assert answer(client, vid, "x", "maya").status_code == 403
     # The grader cites a fact that isn't in the key: ignored, so no contradiction, verdict stays consistent.
     analyzer.push_grade(Grade(verdict="consistent", contradictions=[{"fact_id": "F-9999", "claimed": "?"}]))
-    a = client.post(f"/api/verification/{vid}/answer", json={"text": "fine"}, headers=H("jordan")).json()
+    a = answer(client, vid, "fine", "jordan").json()
     assert a["verdict"] == "consistent" and a["contradictions"] == []
 
 
