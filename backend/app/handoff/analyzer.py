@@ -15,6 +15,7 @@ Tests pass a `ScriptedAnalyzer`.
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -84,6 +85,11 @@ class Analyzer(Protocol):
     async def verify_question(self, *, item: dict[str, Any], answer_key: dict[str, Any]) -> str | None: ...
 
     async def grade(self, *, question: str, answer_key: dict[str, Any], answer: str) -> Any: ...
+
+
+def _json(payload: dict[str, Any]) -> str:
+    """User content for the model: JSON, so quotes like "didn't" can't break the structure."""
+    return json.dumps(payload, ensure_ascii=False, indent=1, default=str)
 
 
 def _prompt(name: str) -> str:
@@ -175,10 +181,8 @@ class DefaultAnalyzer:
 
     async def phrase_question(self, *, gap, item):
         try:
-            user = (f"GAP: {gap['gap_type']} on slots {gap['slots']} ({gap.get('reason', '')})\n"
-                    f"ITEM: {item['title']} ({item['kind']})\n"
-                    f"FACTS: {item.get('facts', [])}\n"
-                    f"SHIFT A'S WORDS: {item.get('quotes', [])}")
+            user = _json({"GAP": gap, "ITEM": {"title": item["title"], "kind": item["kind"]},
+                          "FACTS": item.get("facts", []), "SHIFT A'S WORDS": item.get("quotes", [])})
             out = await _complete("clarify", "clarify", user, "ClarificationText")
             return out.text, out.why_asked
         except Exception as e:  # missing module, provider down, invalid JSON twice
@@ -188,7 +192,7 @@ class DefaultAnalyzer:
     async def brief(self, *, items):
         """(headline, lines) from the LLM, or None → caller uses the template."""
         try:
-            out = await _complete("brief", "brief", f"REVIEWED ITEMS (in order): {items}", "BriefingText")
+            out = await _complete("brief", "brief", _json({"REVIEWED ITEMS (in order)": items}), "BriefingText")
             return out.headline, [dict(line) for line in out.lines]
         except Exception as e:
             log.info("briefing fell back to template: %s", e)
@@ -197,7 +201,7 @@ class DefaultAnalyzer:
     async def verify_question(self, *, item, answer_key):
         try:
             out = await _complete("verify_question", "verify_question",
-                                  f"ITEM: {item}\nANSWER KEY: {answer_key}", "VerificationQuestionText")
+                                  _json({"ITEM": item, "ANSWER KEY": answer_key}), "VerificationQuestionText")
             return out.text
         except Exception as e:
             log.info("verification question fell back to template: %s", e)
@@ -207,7 +211,7 @@ class DefaultAnalyzer:
         """GradeResult. Failure → AnalysisError (no attempt is recorded)."""
         try:
             return await _complete("grade", "grade",
-                                   f"QUESTION: {question}\nANSWER KEY: {answer_key}\nANSWER: {answer}", "GradeResult")
+                                   _json({"QUESTION": question, "ANSWER KEY": answer_key, "ANSWER": answer}), "GradeResult")
         except Exception as e:
             log.warning("grading failed: %s", e)
             raise AnalysisError("Couldn't check that answer. Try again.") from e
