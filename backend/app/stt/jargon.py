@@ -4,11 +4,11 @@ docs/AI_PIPELINE.md §5: JARGON = asset names and aliases + a fixed list of term
 """
 
 import logging
-import os
 from functools import lru_cache
-from pathlib import Path
 
 import yaml
+
+from app import config
 
 log = logging.getLogger(__name__)
 
@@ -18,17 +18,9 @@ FIXED_TERMS = ["UPS", "maintenance bypass", "load test", "chiller", "CRAC", "LOT
 # under that for these short terms, so nothing is silently cut from the front.
 MAX_PROMPT_CHARS = 600
 
-_REPO_CONFIG = Path(__file__).resolve().parents[3] / "config"
 
-
-def _config_dir() -> Path:
-    # Stopgap until backend/app/config.py exists: read CONFIG_DIR directly.
-    configured = os.environ.get("CONFIG_DIR")
-    return Path(configured) if configured else _REPO_CONFIG
-
-
-def _asset_terms(assets_file: Path) -> tuple[list[str], list[str]]:
-    data = yaml.safe_load(assets_file.read_text()) or {}
+def _asset_terms() -> tuple[list[str], list[str]]:
+    data = config.load_yaml("assets")
     entries = [*(data.get("halls") or []), *(data.get("assets") or [])]
     names = [e["name"] for e in entries if e.get("name")]
     aliases = [a for e in entries for a in (e.get("aliases") or [])]
@@ -38,12 +30,11 @@ def _asset_terms(assets_file: Path) -> tuple[list[str], list[str]]:
 @lru_cache(maxsize=1)
 def jargon_prompt() -> str:
     """Comma-separated terms: fixed list first, then asset names, then aliases while room remains."""
-    assets_file = _config_dir() / "assets.yaml"
     try:
-        names, aliases = _asset_terms(assets_file)
+        names, aliases = _asset_terms()
     except (OSError, yaml.YAMLError, TypeError, KeyError) as exc:
         # A missing hint makes transcription a little worse, not wrong, so keep going.
-        log.warning("STT vocabulary hint: couldn't read %s (%s); using fixed terms only", assets_file, exc)
+        log.warning("STT vocabulary hint: couldn't read assets.yaml (%s); using fixed terms only", exc)
         names, aliases = [], []
 
     terms: list[str] = []
