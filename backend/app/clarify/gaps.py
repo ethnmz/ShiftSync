@@ -15,7 +15,10 @@ Rules, per open item from this handoff:
 - missing_owner_or_deadline: open critical work with no owner or deadline stated.
 
 A slot is never asked again once a question about it is pending or answered,
-including "I don't know" (Problem 5).
+including "I don't know" (Problem 5). The one exception: a safety slot gets one
+more try if the answer to its question saved no fact at all, because an answer
+nothing recorded hasn't closed the gap. An answer filed under other slots has
+been recorded, so it doesn't count.
 
 A non-safety gap on an item that was stated clearly is flagged `statement_clear`,
 and the planner records it as not asked (Problem 5). A decision's missing rationale
@@ -70,6 +73,15 @@ def covered_slots(questions: Iterable[ClarificationQuestion], item_id: str) -> s
     return covered
 
 
+def _retry_slots(view: ItemView, questions: Iterable[ClarificationQuestion], catalog: dict) -> set[str]:
+    """Safety slots asked exactly once, whose answer saved no fact on this item. Once only, so it can't loop."""
+    asked = [q for q in questions if q.item_id == view.id and q.status in _COVERING_STATUSES]
+    saved_by = {f.source_statement_id for f in view.facts}
+    return {s for q in asked if q.status == "answered" and q.answer_statement_id not in saved_by for s in q.slots
+            if catalog.get(s, {}).get("safety") and view.fact(s) is None
+            and sum(s in other.slots for other in asked) == 1}
+
+
 def _owner_settled(view: ItemView, followups: Iterable[FollowUp]) -> bool:
     if view.fact("owner") and view.fact("deadline"):
         return True
@@ -81,7 +93,7 @@ def item_gaps(view: ItemView, questions: Iterable[ClarificationQuestion] = (),
     questions = list(questions)
     catalog = config.kind_slots(view.kind)
     vague_terms = config.language()["vague_terms"]
-    covered = covered_slots(questions, view.id)
+    covered = covered_slots(questions, view.id) - _retry_slots(view, questions, catalog)
     clear = _stated_clearly(view, vague_terms)
     is_decision = view.item.is_decision or view.kind == "decision"
     gaps: list[Gap] = []

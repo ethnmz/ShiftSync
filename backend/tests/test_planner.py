@@ -158,6 +158,30 @@ def test_item_with_no_usable_facts_is_not_clear():
     assert not any(g.statement_clear for g in find_gaps([view(ups)]))
 
 
+def test_clearance_answer_that_saved_nothing_is_asked_once_more(env):  # noqa: F811
+    """The rehearsal bug: an answer about clearance was recorded under another slot, so nothing closed the gap."""
+    client, analyzer = env
+    hid = client.post("/api/handoffs", json={"outgoing_id": "maya", "incoming_id": "jordan"},
+                      headers=H("maya")).json()["id"]
+    analyzer.push(Extraction(items=[EI(kind="testing", title="UPS-B testing", asset_id="UPS-B", facts=[
+        EF("work_status", "Pending", "confirmed", "UPS-B testing is still pending", "pending"),
+    ])]))
+    _say(hid, "UPS-B testing is still pending.", analyzer)
+
+    def answer_with_nothing_saved():
+        q = _pending(client.get(f"/api/handoffs/{hid}").json())
+        assert q["slots"] == ["operational_clearance"]
+        analyzer.push(Extraction())
+        r = client.post(f"/api/handoffs/{hid}/questions/{q['id']}/answer", json={"text": "It isn't."}, headers=H("maya"))
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    answer_with_nothing_saved()
+    detail = answer_with_nothing_saved()
+    assert not [q for q in detail["questions"] if q["status"] == "pending"
+                and "operational_clearance" in q["slots"]]  # asked twice, never a third time
+
+
 def test_low_effort_complete_gets_one_question(env):  # noqa: F811
     """eval/scenarios/low_effort_complete.json, with scripted extraction, through the real service."""
     client, analyzer = env
