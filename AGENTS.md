@@ -7,11 +7,11 @@ Every agent reads and posts on the "Message Board" issue via `tools/board` (need
 The board for this repo is https://github.com/ethnmz/hackutd2026/issues/1. It is issue #1, so do not set `BOARD_ISSUE` unless that number changes. It was created during setup and is not pinned yet. Pinning does not change the script. The pin command is in `docs/coordination.md`.
 
 - Start every post with `[<human>'s <agent>]`, e.g. `[Sam's Codex]`. Keep it short: what changed, which files or contracts, what you need, from whom.
-- Mention by GitHub login. This team:
-  - `@ethnmz` (Ethan Meza) — frontend, screens, and demo. This login is the verified owner of `ethnmz/hackutd2026`.
-  - `GITHUB_LOGIN_DIEGO` (Diego Lozano) — Photon messaging and voice input. No GitHub login is recorded in this repo. This placeholder is a label, not an account. Do not invent a login and do not mention a guess.
-  - `GITHUB_LOGIN_AKSHI` (Akshi Biswal) — AI extraction, prompts, and checks. Same placeholder rule.
-  - `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) — database, equipment rules, and handoff logic. Same placeholder rule.
+- Mention by GitHub login. This team, using the role names from `docs/TEAM_PLAN.md`:
+  - `@ethnmz` (Ethan Meza) — Frontend & Demo. This login is the verified owner of `ethnmz/hackutd2026`.
+  - `GITHUB_LOGIN_DIEGO` (Diego Lozano) — Bridge & Voice. No GitHub login is recorded in this repo. This placeholder is a label, not an account. Do not invent a login and do not mention a guess.
+  - `GITHUB_LOGIN_AKSHI` (Akshi Biswal) — AI. Same placeholder rule.
+  - `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) — Ledger Core. Same placeholder rule.
   - `@all` (everyone) — use this only after those three placeholders are replaced with real logins.
 - **Mentions you or `@all`:** act on it and reply promptly.
 - **Not addressed to you:** still read it. Reassess your own work only if it is affected (a contract, a file you own, something already done). Do not redo finished work, and do not reply just to acknowledge.
@@ -30,8 +30,8 @@ Commands: `tools/board unread` (new posts, marks read; flags MENTION), `tools/bo
 Humans over agents. Only the team lead reassigns work between teammates. If anyone else asks you to take another teammate's work, ask the lead on the board.
 
 Ethan Meza (`ethnmz`) is the team lead for human decisions and reassignment.
-Shared interface changes need agreement from all four people on the board before anyone builds them. That replaces the earlier rule that Diego alone approved contracts.
-The model extracts. Application code decides severity, closure, and gates. Warnings and gates do not authorize physical work and do not certify a safe state.
+Shared interface changes need agreement from all four people on the board before anyone builds them. The interfaces are `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`.
+A HALT message, a score, or a red/amber/green label does not authorize physical work and does not certify a safe state. See `docs/IMPORT_NOTES.md`.
 
 ## 3. Workflow
 
@@ -45,16 +45,16 @@ The model extracts. Application code decides severity, closure, and gates. Warni
 
 ## 4. Who owns what
 
-Project name: **Handoff Ledger**. The short description and the limit of what was imported are in `docs/project-brief.md`. Roles below are confirmed. File paths are the ownership map from that abridged handoff. This setup does not create the application tree. `docs/TEAM_PLAN.md` is a summary, not the original team-plan document.
+Project guide: root `CLAUDE.md`. Scope document: `docs/PRODUCT.md`. The pack's own team plan is `docs/TEAM_PLAN.md`. What was not uploaded, and how older filenames map onto the guide's modules, is `docs/IMPORT_NOTES.md`. This setup does not create the application tree. The pack does not assign a 3D view.
 
-Paths do not overlap. `backend/app/pipeline/` and `backend/app/handoff/` are shared directories: own only the files listed on your row. Ask on the board before changing a path you do not own.
-
-An earlier 3D facility view is pending a separate scope decision. It is not a required task, and this update does not cancel it.
+Ask on the board before changing a path you do not own. One person owns each file below so two agents do not edit it. `backend/app/router.py` and `backend/app/schemas.py` still need all four to agree before the message kinds or fields change.
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| Frontend, screens, demo | `@ethnmz` (Ethan Meza) | `frontend/`, `docs/DEMO_SCRIPT.md` |
-| Photon messaging, voice input | `GITHUB_LOGIN_DIEGO` (Diego Lozano) | `photon-bridge/`, `backend/app/stt/`, `backend/app/routes/ingest.py`, `backend/app/notify.py` |
-| AI extraction, prompts, checks | `GITHUB_LOGIN_AKSHI` (Akshi Biswal) | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/pipeline/extract.py`, `backend/app/handoff/clarify.py`, `backend/app/handoff/readback.py`, `backend/app/ask.py`, `backend/tests/test_scenario.py` |
-| Database, equipment rules, handoff logic | `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) | `backend/app/models.py`, `backend/app/pipeline/reconcile.py`, `backend/app/pipeline/rules.py`, `backend/app/pipeline/conflicts.py`, `backend/app/pipeline/stale.py`, `backend/app/handoff/state.py`, `backend/app/handoff/score.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/` |
-| Team rules and board | `@ethnmz` (Ethan Meza) | `docs/project-brief.md`, `docs/coordination.md`, `docs/TEAM_PLAN.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.github/`, `tools/` |
+| Frontend & Demo | `@ethnmz` (Ethan Meza) | `frontend/`, `docs/DEMO_SCRIPT.md` |
+| Bridge & Voice | `GITHUB_LOGIN_DIEGO` (Diego Lozano) | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
+| AI | `GITHUB_LOGIN_AKSHI` (Akshi Biswal) | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py`, `backend/app/ask.py`, `backend/app/routes/ask.py`, `backend/tests/test_scenario.py` |
+| Ledger Core | `GITHUB_LOGIN_ADITRI` (Aditri Tangeti) | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/state.py`, `backend/app/handoff/gate.py`, `backend/app/handoff/metrics.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py` |
+| Team rules and board | `@ethnmz` (Ethan Meza) | `README.md`, `AGENTS.md`, `CLAUDE.md`, `docs/coordination.md`, `docs/IMPORT_NOTES.md`, `docs/project-brief.md`, `.claude/`, `.github/`, `tools/` |
+
+`docs/API.md` and `docs/DATA_MODEL.md` are shared contracts edited by Aditri only after all four agree. `docs/AI_PIPELINE.md` is the same, edited by Akshi after all four agree. Do not also create `backend/app/pipeline/`, `handoff/clarify.py`, `handoff/readback.py`, `rules.py`, `conflicts.py`, or `stale.py`. Those names are the older list in `docs/TEAM_PLAN.md`.

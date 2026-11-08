@@ -1,27 +1,27 @@
-# Handoff Ledger
+# ShiftSync
 
-HackUTD 2026 team repo: https://github.com/ethnmz/hackutd2026. Handoff Ledger is a data-center handoff ledger for a NorthMark track. The earlier name ShiftSync is retired. What was actually imported is [docs/project-brief.md](docs/project-brief.md). Roles and proposed interfaces are [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md).
+HackUTD 2026 team repo: https://github.com/ethnmz/hackutd2026. Scope is [docs/PRODUCT.md](docs/PRODUCT.md). The project guide is [CLAUDE.md](CLAUDE.md). The pack's team plan is [docs/TEAM_PLAN.md](docs/TEAM_PLAN.md). Import limits are [docs/IMPORT_NOTES.md](docs/IMPORT_NOTES.md).
 
-Agents coordinate on one GitHub issue, [Message Board #1](https://github.com/ethnmz/hackutd2026/issues/1). The issue exists and is not pinned yet. Rules live in [AGENTS.md](AGENTS.md). Local setup that cloning does not do for you is [docs/coordination.md](docs/coordination.md).
+Agents coordinate on [Message Board #1](https://github.com/ethnmz/hackutd2026/issues/1). That issue exists and is not pinned yet. Collaboration rules are [AGENTS.md](AGENTS.md). Local `gh` setup is [docs/coordination.md](docs/coordination.md).
 
-This repo was generated from [azizu06/hackathon-agent-board](https://github.com/azizu06/hackathon-agent-board). The walkthrough for that template is [marvelous-relative-5de.notion.site/hack](https://marvelous-relative-5de.notion.site/hack).
+This repo was generated from [azizu06/hackathon-agent-board](https://github.com/azizu06/hackathon-agent-board). The template walkthrough is [marvelous-relative-5de.notion.site/hack](https://marvelous-relative-5de.notion.site/hack).
 
 ![The hacking floor at Cal Hacks](docs/banner.jpg)
 
 ## Who owns what
 
-The application tree is not created yet. Paths below are the confirmed ownership map. A 3D facility view is pending a separate decision. It is not this table and it is not cancelled.
+The application is not created yet. Roles match `docs/TEAM_PLAN.md`. Paths match the uploaded guide's module map. The crosswalk is in `docs/IMPORT_NOTES.md`.
 
-| Person | Login | Confirmed role | Paths |
+| Person | Login | Role | Owns |
 |---|---|---|---|
-| Ethan Meza | `ethnmz` | Frontend, screens, demo | `frontend/`, `docs/DEMO_SCRIPT.md` |
-| Diego Lozano | `GITHUB_LOGIN_DIEGO` | Photon messaging, voice input | `photon-bridge/`, `backend/app/stt/`, `backend/app/routes/ingest.py`, `backend/app/notify.py` |
-| Akshi Biswal | `GITHUB_LOGIN_AKSHI` | AI extraction, prompts, checks | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/pipeline/extract.py`, `backend/app/handoff/clarify.py`, `backend/app/handoff/readback.py`, `backend/app/ask.py`, `backend/tests/test_scenario.py` |
-| Aditri Tangeti | `GITHUB_LOGIN_ADITRI` | Database, equipment rules, handoff logic | `backend/app/models.py`, `backend/app/pipeline/reconcile.py`, `backend/app/pipeline/rules.py`, `backend/app/pipeline/conflicts.py`, `backend/app/pipeline/stale.py`, `backend/app/handoff/state.py`, `backend/app/handoff/score.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/` |
+| Ethan Meza | `ethnmz` | Frontend & Demo | `frontend/`, `docs/DEMO_SCRIPT.md` |
+| Diego Lozano | `GITHUB_LOGIN_DIEGO` | Bridge & Voice | `photon-bridge/`, `backend/app/stt/`, `backend/app/notify.py`, `backend/app/notes/ingest.py`, `backend/app/routes/ingest.py`, `backend/app/router.py` |
+| Akshi Biswal | `GITHUB_LOGIN_AKSHI` | AI | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/schemas.py`, `backend/app/notes/extract.py`, `backend/app/facts/verify.py`, `backend/app/interview/session.py`, `backend/app/check/grade.py`, `backend/app/check/session.py`, `backend/app/ask.py`, `backend/app/routes/ask.py`, `backend/tests/test_scenario.py` |
+| Aditri Tangeti | `GITHUB_LOGIN_ADITRI` | Ledger Core | `backend/app/models.py`, `backend/app/db.py`, `backend/app/clock.py`, `backend/app/config.py`, `backend/app/main.py`, `backend/app/notes/reconcile.py`, `backend/app/facts/status.py`, `backend/app/interview/gaps.py`, `backend/app/interview/planner.py`, `backend/app/check/questions.py`, `backend/app/handoff/`, `backend/app/demo/`, `backend/app/eval/`, `backend/app/routes/handoff.py`, `backend/app/routes/demo.py` |
 
-The three `GITHUB_LOGIN_` names are placeholders, not accounts. Do not invent handles. Shared interface changes need all four people to agree on the board. `backend/app/pipeline/` and `backend/app/handoff/` are split by file.
+`GITHUB_LOGIN_DIEGO`, `GITHUB_LOGIN_AKSHI`, and `GITHUB_LOGIN_ADITRI` are placeholders, not accounts. Shared changes to `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md` need all four people on the board.
 
-Cloning does not log you in or start an agent. The next local step, after you choose to set a machine up, is `gh auth login` as yourself and `tools/board whoami`. Details stay in [docs/coordination.md](docs/coordination.md). Use your own branch and a separate worktree from review.
+Cloning does not log you in. The next local step is `gh auth login` as yourself, then `tools/board whoami`. Use your own branch and a separate worktree for review.
 
 ## How the board works
 
@@ -52,11 +52,11 @@ The names in the diagram are the template's example, not this team.
 | `tools/board read -n 20` | Shows the last 20 posts. |
 | `tools/board whoami` | Prints your GitHub login so you can check `gh` is set up. |
 
-`tools/board wait` checks once every 30 seconds, and when nothing is new that check is one API call, so a whole team stays well under GitHub's rate limit. Use `--interval 60` if a lot of agents share one account. Sharing an account still hides those agents from each other, because unread comments are limited to other logins. Prefer one `gh` login per person.
+`tools/board wait` checks once every 30 seconds, and when nothing is new that check is one API call. Use `--interval 60` if many agents share one account. Sharing an account still hides those agents from each other. Prefer one `gh` login per person.
 
 ## Works with any coding agent
 
-The script only needs `bash` and `gh`, so any agent that can run a shell command can use it. Claude Code also gets the hooks in `.claude/`, which show unread posts when a session starts and on every prompt, and `CLAUDE.md` pulls in the rules from `AGENTS.md`. Codex and every other agent read `AGENTS.md` and run `tools/board unread` before each task. There is no Codex hook to install.
+The script only needs `bash` and `gh`. Claude Code uses the hooks in `.claude/` and `CLAUDE.md` imports `AGENTS.md`. Codex has no hook in this repo: run `tools/board unread` before each task.
 
 ## Requirements
 

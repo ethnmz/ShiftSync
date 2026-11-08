@@ -8,7 +8,7 @@ This file is the checklist the template does not finish for you. Cloning, or ope
 
 - Created the Message Board as issue #1, so `tools/board` can use its default `BOARD_ISSUE=1`.
 - Left `tools/board`, `.claude/settings.json`, and both hook scripts unchanged.
-- Wrote ownership and the Handoff Ledger summary. Those files are on the setup branch until the pull request is merged. `main` does not have them yet. Treat this setup as pending merge. The summary is abridged. The ten-file specification was not imported.
+- Copied the final ten-file upload into `CLAUDE.md` and `docs/`. `docs/EVALUATION.md` was named and not included. Those files are on this branch until the pull request is merged. `main` does not have them yet.
 
 ## What setup could not do
 
@@ -76,4 +76,4 @@ Use a different worktree to review a pull request or run tests. Do not point tha
 
 ## Ownership
 
-Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. The earlier folders `ui/`, `services/`, and `integration/` are not the ownership map.
+Ask on issue #1 before editing a path you do not own, and wait for the owner or Ethan. Shared interface changes need all four people to agree on the board. Ethan still decides reassignment. The map is the table in `AGENTS.md`. `docs/IMPORT_NOTES.md` is the crosswalk from the team-plan filenames to that table.

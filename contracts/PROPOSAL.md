@@ -1,5 +1,5 @@
-# Withdrawn draft
+# Not a second contract
 
-The ShiftSync equipment-event examples that used to be in this file are withdrawn. They are not the Handoff Ledger contract. Do not implement them.
+The imported contracts are `docs/API.md`, `docs/DATA_MODEL.md`, and `docs/AI_PIPELINE.md`. All four people agree on the Message Board before those change.
 
-The current interface names, and who shares them, are listed in `docs/TEAM_PLAN.md` as a proposal. The abridged handoff did not include field schemas, so none are written here. All four people agree on the Message Board before anyone builds or changes a shared interface.
+Earlier ShiftSync equipment-event examples are withdrawn. Do not implement them from this folder.

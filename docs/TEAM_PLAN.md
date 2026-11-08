@@ -1,56 +1,37 @@
-# Team plan (abridged)
+# Team Plan: 4 people, overnight
 
-Provenance: abridged from the uploaded `CLAUDE.md` and `TEAM_PLAN.md`, approved by Ethan on Nov 7, 2026. This is not the original team-plan document and not the rest of the ten-file specification. Those files were not imported. Roles below are confirmed. Interface names and paths are the intended map. Their implementation is proposed. Field-level schemas were not in the abridged handoff, so this file does not invent them.
+> Times assume a Sunday-morning submission deadline; shift them if yours differs. Work **contract-first**: `docs/API.md` and `docs/DATA_MODEL.md` are frozen at 20:00 unless all four agree.
 
 ## Roles
 
-| Person | Confirmed role | Paths |
+| # | Owner | Area | Main files |
+|---|---|---|---|
+| P1 | **Bridge & Voice** | Photon bridge, STT, ingest endpoints, iMessage UX, phone setup | `photon-bridge/`, `backend/app/stt/`, `routes/ingest.py`, `notify.py` |
+| P2 | **AI** | LLM provider abstraction, all 5 prompts, schemas, quote verification, scenario test | `backend/app/llm/`, `prompts/`, `pipeline/extract.py`, `handoff/clarify.py`, `readback.py`, `ask.py`, `tests/test_scenario.py` |
+| P3 | **Ledger core** | DB models, reconcile, rules, conflicts, stale, handoff state machine, gate/score, demo endpoints, seed | `models.py`, `pipeline/reconcile.py`, `rules.py`, `conflicts.py`, `stale.py`, `handoff/state.py`, `score.py`, `briefing.py`, `demo/` |
+| P4 | **Frontend & Demo** | All screens, design, fixtures, demo control panel, pitch, Devpost, video | `frontend/`, `docs/DEMO_SCRIPT.md` |
+
+## Milestones
+
+| Time | Milestone | Done when |
 |---|---|---|
-| Ethan Meza (`ethnmz`) | Frontend, screens, demo | `frontend/`, `docs/DEMO_SCRIPT.md` |
-| Diego Lozano (`GITHUB_LOGIN_DIEGO`) | Photon messaging, voice input | `photon-bridge/`, `backend/app/stt/`, `backend/app/routes/ingest.py`, `backend/app/notify.py` |
-| Akshi Biswal (`GITHUB_LOGIN_AKSHI`) | AI extraction, prompts, checks | `backend/app/llm/`, `backend/app/prompts/`, `backend/app/pipeline/extract.py`, `backend/app/handoff/clarify.py`, `backend/app/handoff/readback.py`, `backend/app/ask.py`, `backend/tests/test_scenario.py` |
-| Aditri Tangeti (`GITHUB_LOGIN_ADITRI`) | Database, equipment rules, handoff logic | `backend/app/models.py`, `backend/app/pipeline/reconcile.py`, `backend/app/pipeline/rules.py`, `backend/app/pipeline/conflicts.py`, `backend/app/pipeline/stale.py`, `backend/app/handoff/state.py`, `backend/app/handoff/score.py`, `backend/app/handoff/briefing.py`, `backend/app/demo/` |
+| 20:00 | **Scaffold** | Repos run; FastAPI `/health`; Vite app with routes; bridge echoes in terminal mode; config YAMLs load |
+| 22:00 | **Vertical slice** | Text memo via `POST /ingest/text` → extract → ledger item → visible on Floor Feed |
+| 00:00 | **iMessage live** | Voice note from a phone → transcript → item → reply in iMessage |
+| 02:00 | **All P0** | Clarifications, briefing, read-back, acks, gate, conflict HALT working end-to-end with `scenario.json` |
+| 04:00 | **P1 + polish** | Stale escalation, contingencies, stand-up capture, Ask drawer; `test_scenario.py` green |
+| 05:30 | **Feature freeze** | Only bug fixes after this |
+| 06:00 | **Rehearse ×3** | Full demo with live phone + replay fallback; record backup video |
+| 07:00 | **Submit** | Devpost (select NorthMark + Photon + Nvidia), public GitHub, video, README |
 
-`GITHUB_LOGIN_DIEGO`, `GITHUB_LOGIN_AKSHI`, and `GITHUB_LOGIN_ADITRI` are placeholders. The handoff included phone setup with Diego's bridge work and a scenario test with Akshi's checks. It did not include GitHub usernames.
+## Interfaces to agree on first (by 20:00)
+1. `ExtractionResult` schema (P2 ↔ P3), in `docs/AI_PIPELINE.md`.
+2. Ingest response shape (P1 ↔ P3), in `docs/API.md`.
+3. Briefing / Gate / Score JSON (P3 ↔ P4), in `docs/API.md`. P4 builds on fixtures until then.
+4. Bridge `/send` (P1 ↔ P3).
 
-The frontend is meant to build against fixtures first. The five AI tasks named in the handoff are extract, clarify, brief, readback, and ask, through `backend/app/llm/client.py` `complete_json`. That client file is inside Akshi's `backend/app/llm/` tree. It is not in the repo yet.
-
-## Shared interfaces (proposed)
-
-The handoff names four shared surfaces and who they sit between. It does not include their fields. All four people agree on the board before anyone builds or changes them.
-
-| Name | Between |
-|---|---|
-| ExtractionResult | Akshi and Aditri |
-| Ingest response | Diego and Aditri |
-| Briefing, gate, and score | Aditri and Ethan |
-| Bridge `/send` | Diego and Aditri |
-
-## Intended stack (not installed)
-
-From the same abridged handoff. This pull request does not install it and does not add provider credentials.
-
-- `backend/`: FastAPI, Python 3.11, SQLModel, SQLite, Pydantic v2.
-- `frontend/`: React, Vite, TypeScript, Tailwind, TanStack Query polling.
-- `photon-bridge/`: TypeScript on Spectrum.
-- Spacetime is not part of this stack.
-- Claude, Nemotron, and speech-to-text providers are configurable in the handoff. Model slugs in the source pack were not verified, so this file does not repeat them as valid ids.
-- Photon or Nvidia sponsor-track eligibility was not verified.
-
-## Rules that travel with the data
-
-- The model extracts. Code decides severity, closure, and gates.
-- Item events are append-only. An item stays unresolved until a closing observation that cites a source.
-- Every fact quotes a source. Validate the quote, the schema, and the asset id. Retry once, then use a review-safe fallback.
-- A fuzzy quote match does not prove the fact is true.
-- The demo clock is simulated. Equipment dependencies come from configuration, not from the model.
-- Offline synthetic replay and a scenario regression test are part of the intended demo. The test file is Akshi's `backend/tests/test_scenario.py`.
-- No secrets and no real phone numbers.
-
-## 3D view
-
-Pending a separate scope decision. Not required, and not cancelled, by this role update.
-
-## Missing from this repo
-
-`PRODUCT.md`, `ARCHITECTURE`, `DATA_MODEL`, `API`, `AI_PIPELINE`, `PHOTON_BRIDGE`, `UI`, `DEMO_SCRIPT`, the original `TEAM_PLAN`, asset/rule/runbook/roster config, and `demo/scenario.json` were named as intent and were not copied in.
+## Rules for the night
+- Commit small and often to `main` through short-lived branches; whoever breaks `test_scenario.py` fixes it.
+- Use Claude Code per area: start each session with "Read CLAUDE.md and docs/<your area>.md".
+- Don't add features at 4 a.m. Rehearse instead.
+- Someone sleeps 1–2 hours in rotation; the demo presenter should be rested.
