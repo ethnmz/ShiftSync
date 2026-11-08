@@ -59,7 +59,7 @@ export default function ClarifyStage({
             onText={(text) => onAnswer(current.id, { text })}
             onAudio={(audio) => onAnswer(current.id, { audio })}
             secondary={
-              <Button onClick={() => onAnswer(current.id, { dontKnow: true })} disabled={sending} title="Records this as unknown. Nobody has to guess.">
+              <Button onClick={() => onAnswer(current.id, { dontKnow: true })} disabled={sending} aria-label="I don't know. Records this as unknown." title="Records this as unknown. Nobody has to guess.">
                 ? I don't know
               </Button>
             }

@@ -2,36 +2,22 @@ import { useEffect, useState, type ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { FIXTURE_MODE } from "../api/client";
 import { DEMO_USERS, useUser } from "../session/user";
+import { applyTheme, readTheme } from "../theme";
 
 // Built screens only. History, Supervisor and Evaluation are P1 in
 // docs/PRODUCT.md and are listed as not built rather than linked.
 const NAV = [
-  { to: "/create", label: "Create handoff", icon: "＋" },
+  { to: "/create", label: "New handoff", icon: "＋" },
   { to: "/receive", label: "Receive", icon: "↘" },
 ];
 const LATER = ["History", "Supervisor", "Evaluation"];
-
-function readTheme(): "dark" | "light" {
-  try {
-    return localStorage.getItem("shiftsync-theme") === "light" ? "light" : "dark";
-  } catch {
-    return "dark";
-  }
-}
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { user, setUser } = useUser();
   const [theme, setTheme] = useState(readTheme);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    try {
-      localStorage.setItem("shiftsync-theme", theme);
-    } catch {
-      /* private mode: theme just won't persist */
-    }
-  }, [theme]);
+  useEffect(() => applyTheme(theme), [theme]);
 
   const nav = (
     <nav aria-label="Main" className="flex flex-col gap-0.5">

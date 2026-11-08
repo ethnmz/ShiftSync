@@ -5,6 +5,9 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { UserProvider } from "./session/user";
 import "./index.css";
+import { applyTheme, readTheme } from "./theme";
+
+applyTheme(readTheme());
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

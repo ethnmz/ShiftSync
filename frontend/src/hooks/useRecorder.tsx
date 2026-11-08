@@ -22,7 +22,7 @@ export function recordingSupported() {
 // MediaRecorder with a level meter driven by the real input signal.
 // finish() hands the Blob to onRecorded; cancel() discards it. Audio stays
 // in memory only; nothing is written to browser storage.
-export function useRecorder(onRecorded: (audio: Blob) => void) {
+export function useRecorder(onRecorded: (audio: Blob, peaks: number[]) => void) {
   const [recording, setRecording] = useState(false);
   const [starting, setStarting] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -30,6 +30,7 @@ export function useRecorder(onRecorded: (audio: Blob) => void) {
   const [error, setError] = useState<RecorderError | null>(recordingSupported() ? null : "unsupported");
 
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const peaksRef = useRef<number[]>([]);
   const keepRef = useRef(true);
   const cleanupRef = useRef<(() => void) | null>(null);
   const onRecordedRef = useRef(onRecorded);
@@ -66,7 +67,8 @@ export function useRecorder(onRecorded: (audio: Blob) => void) {
     keepRef.current = true;
     recorder.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
     recorder.onstop = () => {
-      if (keepRef.current && chunks.length) onRecordedRef.current(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+      if (keepRef.current && chunks.length)
+        onRecordedRef.current(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }), peaksRef.current);
     };
 
     const audioCtx = new AudioContext();
@@ -75,8 +77,16 @@ export function useRecorder(onRecorded: (audio: Blob) => void) {
     audioCtx.createMediaStreamSource(stream).connect(analyser);
     const bins = new Uint8Array(analyser.frequencyBinCount);
     let frame = 0;
+    let lastPeak = 0;
+    peaksRef.current = [];
     const draw = () => {
       analyser.getByteFrequencyData(bins);
+      // Keep one overall level every 100 ms for the waveform of the clip.
+      const now = performance.now();
+      if (now - lastPeak > 100) {
+        lastPeak = now;
+        peaksRef.current.push(bins.reduce((a, b) => a + b, 0) / bins.length / 255);
+      }
       setLevels(Array.from({ length: BARS }, (_, i) => bins[Math.floor((i / BARS) * bins.length * 0.6)] / 255));
       frame = requestAnimationFrame(draw);
     };
@@ -135,4 +145,16 @@ export function LevelMeter({ levels, active }: { levels: number[]; active: boole
       ))}
     </div>
   );
+}
+
+// Reduce a peak list to `n` bars, normalized to the loudest one.
+export function toBars(peaks: number[], n: number) {
+  if (peaks.length === 0) return Array(n).fill(0.15);
+  const out = Array.from({ length: n }, (_, i) => {
+    const from = Math.floor((i / n) * peaks.length);
+    const to = Math.max(from + 1, Math.floor(((i + 1) / n) * peaks.length));
+    return Math.max(...peaks.slice(from, to));
+  });
+  const max = Math.max(...out, 0.01);
+  return out.map((v) => Math.max(0.08, v / max));
 }
