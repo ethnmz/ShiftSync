@@ -134,7 +134,7 @@ export default function HomeScreen() {
         )}
 
         {/* Hero */}
-        <section className="mt-8 grid overflow-hidden rounded-2xl border border-line bg-[#fdfbf6] lg:grid-cols-[1.1fr_1fr]">
+        <section className="mt-8 grid overflow-hidden rounded-panel border border-line bg-[#fdfbf6] shadow-panel lg:grid-cols-[1.1fr_1fr]">
           <div className="flex flex-col items-start gap-6 p-8 sm:p-10">
             <h2 className="max-w-lg text-3xl font-semibold">{hero.title}</h2>
             <p className="max-w-md text-muted">{hero.body}</p>

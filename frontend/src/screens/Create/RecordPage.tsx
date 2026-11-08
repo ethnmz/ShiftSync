@@ -118,7 +118,7 @@ export default function RecordPage() {
 
   return (
     <PageWidth>
-      <section aria-label="Handoff note" className="flex min-h-[calc(100vh-22rem)] flex-col rounded-2xl border border-line bg-surface">
+      <section aria-label="Handoff note" className="flex min-h-[calc(100vh-22rem)] flex-col rounded-panel border border-line bg-surface shadow-panel">
         {/* Card header: mode toggle and exit */}
         <div className="relative flex items-center justify-center border-b border-line px-4 py-3">
           <div role="tablist" aria-label="How to give the note" className="flex rounded-xl bg-subtle p-1">
