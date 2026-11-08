@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from rapidfuzz import fuzz
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
@@ -46,6 +47,7 @@ METHOD_NOTES = [
 ]
 OUTGOING, INCOMING = "maya", "jordan"
 MAX_QUESTIONS = 10
+QUOTE_MATCH = 85  # same threshold as the source-quote check
 
 
 def results_path() -> Path:
@@ -150,8 +152,17 @@ async def run_once(sc: dict[str, Any], condition: str, llm: EvalLLM, analyzer: A
 
     cq = sc["comprehension_questions"]
     reader = await llm.reader_answers(artifact, [q["q"] for q in cq])
-    j = await llm.judge(artifact=artifact, scenario=sc, reader_answers=reader,
+    # The fixed disclaimer is not a claim about the handoff; keep it out of grading.
+    graded = artifact.replace(receive.DISCLAIMER, "").strip()
+    j = await llm.judge(artifact=graded, scenario=sc, reader_answers=reader,
                         questions_asked=asked, operator_answers=answers)
+    # "Incorrect facts introduced by AI": the normal handoff has no AI, so it is 0 by definition.
+    # A listed statement only counts if it really appears in the graded text; a judge that
+    # quotes must_not_claim lines back as "incorrect" would otherwise invent errors.
+    incorrect = [] if condition == "normal" else [
+        i for i in j.incorrect_statements
+        if i.statement and fuzz.partial_ratio(i.statement.lower(), graded.lower()) >= QUOTE_MATCH
+    ]
     gt = sc["ground_truth_facts"]
     n_crit = sum(1 for f in gt if f.get("critical"))
     n_unk = sum(1 for f in gt if f["certainty"] in ("unverified", "unknown"))
@@ -161,13 +172,15 @@ async def run_once(sc: dict[str, Any], condition: str, llm: EvalLLM, analyzer: A
         "ambiguous_clarified": _rate(j.ambiguous_resolved, len(sc["ambiguous_phrases"])),
         "misunderstandings_prevented": _rate(j.reader_grades, len(cq)),
         "unknowns_preserved": _rate(j.unknowns_preserved, n_unk),
-        "incorrect_facts_introduced": len(j.incorrect_statements),
+        "incorrect_facts_introduced": len(incorrect),
         "shift_a_words_proxy": _words(sc["notes"]) + sum(_words(a) for a in answers),
         "shift_b_words_proxy": _words(artifact),
         "clarification_questions_asked": extra.get("clarification_questions_asked"),
         "not_asked": extra.get("not_asked"),
         "_artifact": artifact,
-        "_incorrect_statements": j.incorrect_statements,
+        "_incorrect_statements": [i.model_dump() for i in incorrect],
+        "_judge": j.model_dump(),
+        "_reader_answers": reader,
     }
 
 
@@ -178,7 +191,9 @@ def _aggregate(runs: list[dict[str, Any]]) -> dict[str, Any]:
             continue
         vals = [r[key] for r in runs if r[key] is not None]
         out[key] = None if not vals else {"mean": statistics.fmean(vals), "min": min(vals), "max": max(vals), "n": len(vals)}
-    out["examples"] = {"artifact": runs[0]["_artifact"], "incorrect_statements": runs[0]["_incorrect_statements"]}
+    # Run 1's evidence, so a person can spot-check every score (EVALUATION.md).
+    out["examples"] = {"artifact": runs[0]["_artifact"], "incorrect_statements": runs[0]["_incorrect_statements"],
+                       "judge": runs[0]["_judge"], "reader_answers": runs[0]["_reader_answers"]}
     return out
 
 

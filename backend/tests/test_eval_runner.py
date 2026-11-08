@@ -7,7 +7,7 @@ import json
 import pytest
 
 from app.eval import run as eval_run
-from app.eval.llm import Flag, JudgeOut, ReaderGrade
+from app.eval.llm import Flag, Incorrect, JudgeOut, ReaderGrade
 from app.handoff.analyzer import ExtractedFact as EF
 from app.handoff.analyzer import ExtractedItem as EI
 from app.handoff.analyzer import Extraction, ScriptedAnalyzer
@@ -18,7 +18,7 @@ class FakeLLM:
         self.operator_calls = []
 
     async def summarize(self, notes):
-        return "UPS-A vendor returns tomorrow. Rack A13 alarm handled."
+        return "UPS-A is fine. The vendor returns tomorrow. Rack A13 alarm handled."
 
     async def operator_answer(self, question, knowledge):
         self.operator_calls.append(question)
@@ -34,7 +34,7 @@ class FakeLLM:
                         ambiguous_resolved=[Flag(index=0, ok=ok)], unknowns_preserved=[],
                         missing_detected=[Flag(index=i, ok=True) for i in range(len(scenario["missing_in_notes"]))],
                         reader_grades=[ReaderGrade(index=0, correct=ok)],
-                        incorrect_statements=[] if ok else ["UPS-A is fine"])
+                        incorrect_statements=[] if ok else [Incorrect(statement="UPS-A is fine", why="contradicts clearance")])
 
 
 def ups_a_extraction():
@@ -65,7 +65,26 @@ def test_full_run_with_fake_llm(data_dir):
     assert normal["clarification_questions_asked"] is None
     assert ss["critical_facts_transferred"]["mean"] == 1.0 and normal["critical_facts_transferred"]["mean"] == 0.0
     assert ss["shift_a_words_proxy"]["mean"] > normal["shift_a_words_proxy"]["mean"]  # effort is shown, not hidden
+    # The raw notes involve no AI, so they can't "introduce" AI errors; the summary can.
+    assert normal["incorrect_facts_introduced"]["mean"] == 0
+    assert conds["summary"]["incorrect_facts_introduced"]["mean"] == 1
+    # Spot-check evidence is saved.
+    assert ss["examples"]["judge"]["critical_facts"] and ss["examples"]["reader_answers"]
     assert json.loads((data_dir / "eval_results.json").read_text())["status"] == "complete"
+
+
+def test_judge_cannot_invent_incorrect_statements(data_dir):
+    class Inventing(FakeLLM):
+        async def judge(self, **kw):
+            out = await super().judge(**kw)
+            out.incorrect_statements.append(Incorrect(statement="UPS-A cleared for full load", why="made up"))
+            return out
+    out = asyncio.run(eval_run.run(runs=1, only="vague_ups", llm=Inventing(),
+                                   analyzer=ScriptedAnalyzer([ups_a_extraction()])))
+    # "UPS-A cleared for full load" is not in any artifact, so it is never counted.
+    conds = out["scenarios"]["vague_ups"]["conditions"]
+    assert conds["summary"]["incorrect_facts_introduced"]["mean"] == 1
+    assert conds["shiftsync"]["incorrect_facts_introduced"]["mean"] == 0
 
 
 def test_unavailable_llm_reports_not_run_without_numbers(data_dir, monkeypatch):
