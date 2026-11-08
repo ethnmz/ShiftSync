@@ -3,7 +3,7 @@ import type { Certainty, Fact, FactPatch } from "../api/types";
 import { slotLabel } from "../labels";
 import { isRaise } from "../review";
 import CertaintyBadge, { CERTAINTY, ReviewChip } from "./CertaintyBadge";
-import { Button } from "./ui";
+import { Button, fieldClass } from "./ui";
 
 const LEVELS: Certainty[] = ["confirmed", "reported", "unverified", "unknown"];
 
@@ -121,7 +121,7 @@ function FactEditor({ fact, busy, onCancel, onSave }: { fact: Fact; busy: boolea
     >
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-semibold">Value</span>
-        <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} className="min-h-touch rounded-lg border border-line-strong bg-surface px-3 text-base" />
+        <input autoFocus value={value} onChange={(e) => setValue(e.target.value)} className={`${fieldClass} min-h-touch`} />
       </label>
       <fieldset className="flex flex-col gap-1 text-sm">
         <legend className="mb-1 font-semibold">Certainty</legend>
@@ -142,7 +142,7 @@ function FactEditor({ fact, busy, onCancel, onSave }: { fact: Fact; busy: boolea
       {raising && (
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-warn">Raising certainty needs your own statement. What did you confirm, and how?</span>
-          <textarea rows={2} value={statement} onChange={(e) => setStatement(e.target.value)} className="rounded-lg border border-line-strong bg-surface p-2 text-base" />
+          <textarea rows={2} value={statement} onChange={(e) => setStatement(e.target.value)} className={`${fieldClass} py-2`} />
         </label>
       )}
       <div className="flex flex-wrap justify-between gap-2">

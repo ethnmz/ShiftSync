@@ -3,7 +3,7 @@ import { useState } from "react";
 import { assignFollowup, closeFollowup, errorMessage } from "../../api/client";
 import type { FollowUp, HandoffDetail } from "../../api/types";
 import FollowUpRow from "../../components/FollowUpRow";
-import { Button, Card, Notice } from "../../components/ui";
+import { Button, Card, fieldClass, Notice } from "../../components/ui";
 import { ROSTER, canAssign, useUser } from "../../session/user";
 
 // datetime-local value (local time) <-> ISO 8601 UTC for the API.
@@ -24,7 +24,7 @@ function AssignForm({ f, onDone }: { f: FollowUp; onDone: () => void }) {
     >
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-semibold">Owner</span>
-        <select value={owner} onChange={(e) => setOwner(e.target.value)} required className="min-h-[40px] rounded-md border border-line-strong bg-surface px-2">
+        <select value={owner} onChange={(e) => setOwner(e.target.value)} required className={`${fieldClass} min-h-touch cursor-pointer`}>
           <option value="" disabled>
             Pick a person
           </option>
@@ -40,7 +40,7 @@ function AssignForm({ f, onDone }: { f: FollowUp; onDone: () => void }) {
         <span className="font-semibold">
           Deadline <span className="font-normal text-faint">(optional)</span>
         </span>
-        <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="min-h-[40px] rounded-md border border-line-strong bg-surface px-2" />
+        <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={`${fieldClass} min-h-touch`} />
       </label>
       {m.isError && (
         <Notice tone="danger" role="alert">
@@ -77,7 +77,7 @@ function CloseForm({ f, onDone }: { f: FollowUp; onDone: () => void }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="e.g. Vendor emailed the completion report at 09:40"
-          className="rounded-md border border-line-strong bg-surface p-2 placeholder:text-faint"
+          className={`${fieldClass} py-2`}
         />
       </label>
       {m.isError && (

@@ -5,9 +5,10 @@ import type { HandoffDetail, Verdict, VerificationAttempt, VerificationCheck } f
 import { canAssign } from "../../session/user";
 import CertaintyBadge from "../../components/CertaintyBadge";
 import QuestionCard from "../../components/QuestionCard";
-import { Button, Card, Chip, Notice, type Tone } from "../../components/ui";
+import { Button, Card, Chip, fieldClass, Notice, type Tone } from "../../components/ui";
 import { formatClock } from "../../labels";
 import { useUser } from "../../session/user";
+import { AiByline } from "../../components/mascots/Flat";
 
 const ATTEMPT_LIMIT = 2; // config/slots.yaml budgets.verification_attempts
 
@@ -261,7 +262,7 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
               >
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="font-semibold">What was clarified?</span>
-                  <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className="rounded-md border border-line-strong bg-surface p-2" />
+                  <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className={`${fieldClass} py-2`} />
                 </label>
                 {clarify.isError && (
                   <Notice tone="danger" role="alert">
@@ -286,7 +287,10 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
   return (
     <Card className="p-5">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">Understanding check</h2>
+        <h2 className="flex flex-col gap-1.5 text-lg font-semibold">
+          <AiByline kind="lumen" />
+          Understanding check
+        </h2>
         <span className="text-xs text-muted">Separate from acknowledgment · up to {ATTEMPT_LIMIT} attempts per question</span>
       </div>
       {body}

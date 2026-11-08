@@ -3,10 +3,13 @@ import type { AnswerInput } from "../../api/client";
 import type { HandoffDetail, Question } from "../../api/types";
 import CertaintyBadge from "../../components/CertaintyBadge";
 import QuestionCard from "../../components/QuestionCard";
-import { Logo } from "../../components/icons";
+import { CircleCheck, CircleHelp } from "lucide-react";
 import { Button, Notice } from "../../components/ui";
-import { slotLabel } from "../../labels";
+import { formatClock, slotLabel } from "../../labels";
+import { person } from "../../session/roster";
 import { byPriority } from "../../review";
+import { AiByline } from "../../components/mascots/Flat";
+import Mascot3D from "../../components/mascots/Mascot3D";
 
 // What an answered question added: the facts sourced from its answer.
 export function effectOf(handoff: HandoffDetail, q: Question) {
@@ -25,39 +28,72 @@ export function focusFor(h: HandoffDetail) {
   return new Set(item?.facts.map((f) => f.id) ?? []);
 }
 
-function AskBubble({ children }: { children: ReactNode }) {
+// Thread pieces in the Harbor inbox style: a sender row over each message,
+// and centered system lines for what an answer changed.
+function SenderRow({ name, at, avatar, right = false }: { name: string; at?: string; avatar: ReactNode; right?: boolean }) {
   return (
-    <div className="flex gap-3">
-      <span className="mt-0.5 shrink-0">
-        <Logo size={28} />
-      </span>
-      <div className="min-w-0 flex-1">{children}</div>
+    <div className={`flex items-center gap-2.5 ${right ? "flex-row-reverse" : ""}`}>
+      {avatar}
+      <span className="font-semibold">{name}</span>
+      {at && <span className="text-sm tabular-nums text-muted">{formatClock(at)}</span>}
     </div>
   );
 }
 
-// Asked questions and the operator's answers, as a short conversation.
+function SystemLine({ tone, children }: { tone: "ok" | "unk"; children: ReactNode }) {
+  const Icon = tone === "ok" ? CircleCheck : CircleHelp;
+  return (
+    <p className="flex justify-center">
+      <span className="inline-flex max-w-[90%] items-start gap-2 text-sm text-muted">
+        <Icon aria-hidden className={`mt-0.5 size-3.5 shrink-0 ${tone === "ok" ? "text-ok" : "text-unk"}`} />
+        <span>{children}</span>
+      </span>
+    </p>
+  );
+}
+
+function AskBubble({ children, item }: { children: ReactNode; item?: string }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <AiByline kind="orbit" />
+      {item && <p className="text-sm text-muted">{item}</p>}
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+// Asked questions and the operator's answers, as a short thread.
 export function QAHistory({ handoff }: { handoff: HandoffDetail }) {
   const answered = answeredQuestions(handoff);
   const titleOf = (id: string) => handoff.items.find((i) => i.id === id)?.title ?? id;
   if (answered.length === 0) return null;
   return (
-    <ol className="flex flex-col gap-5">
+    <ol className="flex flex-col gap-6">
       {answered.map((q) => {
         const e = effectOf(handoff, q);
-        const ans = handoff.statements.find((s) => s.question_id === q.id)?.text;
+        const st = handoff.statements.find((x) => x.question_id === q.id);
+        const who = person(st?.speaker_id)?.name ?? handoff.outgoing.name;
         return (
           <li key={q.id} className="flex flex-col gap-3">
-            <AskBubble>
-              <p className="text-sm text-muted">{titleOf(q.item_id)}</p>
+            <AskBubble item={titleOf(q.item_id)}>
               <p className="font-semibold leading-snug">{q.text}</p>
             </AskBubble>
-            <div className="ml-10 flex flex-col items-end gap-1">
-              <p className="rounded-2xl rounded-br-md bg-subtle px-4 py-2.5">{q.status === "answered_unknown" ? "I don't know" : (ans ?? "Answered")}</p>
-              <p className={`text-sm ${e.tone === "ok" ? "text-ok" : "text-unk"}`}>
-                {e.tone === "ok" ? "✓" : "?"} {e.text}
+            <div className="flex flex-col items-end gap-2">
+              <SenderRow
+                right
+                name={who}
+                at={st?.at}
+                avatar={
+                  <span aria-hidden className="flex size-7 items-center justify-center rounded-lg bg-ink text-xs font-semibold text-white">
+                    {who.slice(0, 1)}
+                  </span>
+                }
+              />
+              <p className="max-w-[90%] rounded-2xl rounded-tr-md border border-line bg-surface px-4 py-2.5 shadow-card">
+                {q.status === "answered_unknown" ? "I don't know" : (st?.text ?? "Answered")}
               </p>
             </div>
+            <SystemLine tone={e.tone}>{e.text}</SystemLine>
           </li>
         );
       })}
@@ -127,7 +163,7 @@ export function ClarifyPanel({
 }: {
   handoff: HandoffDetail;
   sending: boolean;
-  error: string | null;
+  error: { title: string; text: string } | null;
   onAnswer: (questionId: string, input: AnswerInput) => void;
   onContinue: () => void;
 }) {
@@ -177,6 +213,7 @@ export function ClarifyPanel({
       ) : (
         <AskBubble>
           <div className="flex flex-col items-start gap-3">
+            <Mascot3D kinds={["orbit"]} width={150} height={130} className="self-center" />
             <p className="font-semibold">{handoff.questions.length ? "No more questions." : "No questions needed."}</p>
             <p className="text-sm text-muted">
               {handoff.questions.length ? "I asked what mattered most. Check the structured handoff next." : "Nothing important is missing in this note."}
@@ -188,8 +225,8 @@ export function ClarifyPanel({
         </AskBubble>
       )}
       {error && (
-        <Notice tone="danger" role="alert" title="The answer wasn't saved">
-          {error}
+        <Notice tone="danger" role="alert" title={error.title}>
+          {error.text}
         </Notice>
       )}
       <div ref={endRef} />
