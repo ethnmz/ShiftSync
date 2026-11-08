@@ -1,7 +1,27 @@
-"""Validated model output consumed by the verification grader."""
+"""Validated model output for handoff clarification and verification."""
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class ClarificationText(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+    text: str = Field(min_length=1)
+    why_asked: str = Field(min_length=1)
+
+    @field_validator("text")
+    @classmethod
+    def check_question(cls, value: str) -> str:
+        if len(value.split()) > 30 or value.count("?") != 1 or not value.endswith("?"):
+            raise ValueError("Ask one question in at most 30 words, ending with a question mark.")
+        return value
+
+    @field_validator("why_asked")
+    @classmethod
+    def check_reason(cls, value: str) -> str:
+        if len(value.split()) > 10:
+            raise ValueError("Explain the reason in at most 10 words.")
+        return value
 
 
 class Contradiction(BaseModel):
