@@ -99,14 +99,24 @@ async def _complete(task: str, prompt: str, user: str, schema_name: str) -> Any:
 # ---------- Deterministic helpers ----------
 
 def verify_quote(quote: str | None, text: str) -> bool:
-    """Akshi's quote check if present, else rapidfuzz partial_ratio ≥ 85."""
+    """Akshi's quote check (`app.certainty.quotes.supported_quote`) if present,
+    else rapidfuzz partial_ratio ≥ 85."""
     if not quote:
         return False
     try:
         mod = importlib.import_module("app.certainty.quotes")
-        return bool(mod.verify_quote(quote, text))
-    except (ImportError, AttributeError):
-        return fuzz.partial_ratio(quote.lower(), text.lower()) >= QUOTE_MATCH_THRESHOLD
+    except ImportError:
+        mod = None
+    check = getattr(mod, "supported_quote", None) or getattr(mod, "verify_quote", None)
+    if check is not None:
+        return bool(check(quote, text))
+    return fuzz.partial_ratio(quote.lower(), text.lower()) >= QUOTE_MATCH_THRESHOLD
+
+
+def _roster_for_llm() -> list[dict[str, Any]]:
+    """Roster without phone numbers: only the configured providers see content, and phones aren't needed."""
+    return [{"id": p["id"], "name": p["name"], "role": p["role"], "team": p.get("team")}
+            for p in config.people().values()]
 
 
 def template_question(gap: dict[str, Any], item: dict[str, Any]) -> tuple[str, str]:
@@ -146,14 +156,22 @@ class DefaultAnalyzer:
     async def extract(self, *, text, speaker, existing_items, scope):
         try:
             mod = importlib.import_module("app.extract")
-            fn = getattr(mod, "extract_statement")
-        except (ImportError, AttributeError) as e:
+        except ImportError as e:
             raise AnalysisError("extraction is not available yet") from e
+        speaker = {k: v for k, v in speaker.items() if k != "phone"}
         try:
-            return await fn(text=text, speaker=speaker, existing_items=existing_items, scope=scope)
+            if hasattr(mod, "extract"):
+                # Akshi's signature: extract(statement, *, assets, kinds, roster, speaker, existing_items, scope)
+                return await mod.extract(text, assets=config.load_yaml("assets")["assets"],
+                                         kinds=config.slots()["kinds"], roster=_roster_for_llm(),
+                                         speaker=speaker, existing_items=existing_items, scope=scope)
+            if hasattr(mod, "extract_statement"):
+                return await mod.extract_statement(text=text, speaker=speaker, existing_items=existing_items,
+                                                   scope=scope)
         except Exception as e:  # any failure → no state change
             log.warning("extraction failed: %s", e)
             raise AnalysisError("Couldn't analyze that. Try again or type it.") from e
+        raise AnalysisError("extraction is not available yet")
 
     async def phrase_question(self, *, gap, item):
         try:
