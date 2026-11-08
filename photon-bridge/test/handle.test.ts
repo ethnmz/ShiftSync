@@ -90,12 +90,15 @@ test("our own outbound messages are ignored", async () => {
   assert.deepEqual(f.replies, []);
 });
 
-test("a 4xx message from the backend is shown to the operator", async () => {
+test("a 4xx message from the backend is shown to the operator", async (t) => {
+  const logged = t.mock.method(console, "error", () => {});
   const message = "This number isn't on the ShiftSync roster. Ask your supervisor to add it.";
   const api = backend(403, { detail: { code: "unknown_sender", message } });
   const f = fakes({ type: "text", text: "hi" });
   await handle(f.space, f.message, config(api.fetchFn));
   assert.deepEqual(f.replies, [message]);
+  // The operator's own id is printed locally so it can be added to SENDER_MAP.
+  assert.ok(logged.mock.calls.some((c) => String(c.arguments[0]).includes('"+12145550123=<roster phone>"')));
 });
 
 test("a 5xx or a dead backend never leaks details", async () => {

@@ -73,14 +73,14 @@ export async function handle(space: Space, message: Message, cfg: BridgeConfig):
     } else {
       return;
     }
-    const bubbles = await post(cfg, init);
+    const bubbles = await post(cfg, init, message.sender?.id ?? "");
     if (bubbles.reply) await message.reply(bubbles.reply);
     for (const text of bubbles.followups ?? []) await space.send(text);
   });
 }
 
 /** The backend's bubbles, or one bubble that says what went wrong. Never throws. */
-async function post(cfg: BridgeConfig, init: RequestInit): Promise<Bubbles> {
+async function post(cfg: BridgeConfig, init: RequestInit, senderId: string): Promise<Bubbles> {
   let res: Response;
   try {
     res = await (cfg.fetch ?? fetch)(`${cfg.backendUrl}/api/inbound/imessage`, init);
@@ -92,6 +92,11 @@ async function post(cfg: BridgeConfig, init: RequestInit): Promise<Bubbles> {
   if (res.ok && body) return body as Bubbles;
   // 4xx messages (unknown number, failed transcription, already submitted) are written for the operator.
   const message = body?.detail?.message;
-  console.error(`[bridge] backend ${res.status}: ${body?.detail?.code ?? "no body"}`);
+  const code = body?.detail?.code ?? "no body";
+  console.error(`[bridge] backend ${res.status}: ${code}`);
+  if (code === "unknown_sender") {
+    // Setup help: the exact id iMessage reports is what SENDER_MAP needs.
+    console.error(`[bridge] sender "${senderId}" isn't mapped. Add "${senderId}=<roster phone>" to SENDER_MAP in .env.`);
+  }
   return { reply: res.status < 500 && typeof message === "string" ? message : FAILED };
 }
