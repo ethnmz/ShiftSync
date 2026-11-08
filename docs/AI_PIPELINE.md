@@ -26,7 +26,7 @@ async def complete_json(task, system, user, schema) -> BaseModel:
 - Target < 4 s per call so clarification feels conversational. Log every call to `data/llm_log.jsonl`.
 
 ## 2. Guardrails (code, `app/certainty/` and `app/verify/floor.py`)
-1. **Quote verification**: `rapidfuzz.fuzz.partial_ratio(quote, statement.text) ≥ 85`, else drop the fact and log it.
+1. **Extractor quote verification**: Require 3–30 words. An invalid length triggers model-output validation and one retry. For a valid-length quote, require an exact, case-sensitive, contiguous match in the source statement so the UI can highlight the operator's words. Drop and log facts whose quotes do not match.
 2. **Certainty floor**: lexicons in `slots.yaml → language`: `uncertainty_terms` → `unknown`; `hedges` → max `unverified`; `observation_terms` → max `reported`. Only lowers. Logged as `certainty_floored` with the triggering term (shown in the UI: *"unverified: 'mostly'"*).
 3. **Vague flag**: a quote containing `vague_terms` can't satisfy a safety slot by itself → `vague_statement` gap.
 4. **No invented owners/deadlines/clearance/completion**: owner must be a roster person or role named in the quote ("Shift B lead" → incoming lead); deadline must be derivable from time words in the quote; `operational_clearance=cleared` and `work_status=complete` require an explicit statement (never inferred from "vendor coming back", "looks good"…). Otherwise null → follow-up "To be assigned".
