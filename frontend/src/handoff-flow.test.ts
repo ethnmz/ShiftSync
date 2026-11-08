@@ -56,7 +56,7 @@ describe("review rules", () => {
     expect(() => sim.simPatchFact(f.id, { review_state: "operator_edited", certainty: "confirmed" })).toThrow(/statement/);
     sim.simPatchFact(f.id, { review_state: "operator_edited", certainty: "confirmed", text: "I saw the vendor's signed report." });
     const h = sim.simGet();
-    expect(h.statements.at(-1)?.role).toBe("review_edit");
+    expect(h.statements[h.statements.length - 1]?.role).toBe("review_edit");
   });
 });
 
