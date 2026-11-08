@@ -223,7 +223,13 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
           question={check.question}
           sending={answer.isPending}
           sendingLabel="Comparing with the handoff…"
-          submitLabel={attempts.length ? `Try again (attempt ${attemptNo} of ${ATTEMPT_LIMIT})` : "Check my answer"}
+          submitLabel={
+            !canRetry
+              ? "No attempts left"
+              : attempts.length
+                ? `Try again (attempt ${attemptNo} of ${ATTEMPT_LIMIT})`
+                : "Check my answer"
+          }
           placeholder="Explain it the way you'd brief your team…"
           disabled={!canRetry}
           onText={(text) => answer.mutate({ text })}
