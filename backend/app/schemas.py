@@ -57,6 +57,21 @@ class BriefingText(BaseModel):
         return value
 
 
+class VerificationQuestionText(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+    text: str = Field(min_length=1)
+
+    @field_validator("text")
+    @classmethod
+    def check_verification_question(cls, value: str) -> str:
+        words = value.split()
+        if len(words) > 25 or value.count("?") != 1 or not value.endswith("?"):
+            raise ValueError("Write one question of at most 25 words ending with a question mark.")
+        if words[0].casefold() not in {"what", "why", "who", "how", "before"}:
+            raise ValueError("Start with What, Why, Who, How or Before.")
+        return value
+
+
 class GradeResult(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
     conveyed_fact_ids: list[str]
