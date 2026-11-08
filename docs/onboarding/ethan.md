@@ -28,7 +28,7 @@ One human and one agent may keep this checkout. A second agent on the same machi
 
 ## Before any screen
 
-`docs/API.md` is the final pack, not the older signoff API. `docs/CONTRACT_MIGRATION.md` says what changed from the in-person notes at https://github.com/ethnmz/hackutd2026/issues/1#issuecomment-6716280102. Those notes are not all implemented in the new API, and the differences are not a new team approval. Do not invent fixtures for a route the migration doc marks as still open. After setup, summarize his role and that wait, then stop.
+`docs/API.md` is the final pack, not the older signoff API. `docs/CONTRACT_MIGRATION.md` says what changed from the in-person notes at https://github.com/ethnmz/hackutd2026/issues/1#issuecomment-6716280102. Those notes are not all implemented in the new API. All four people then chose the new spec on all six differences (https://github.com/ethnmz/hackutd2026/issues/1#issuecomment-6716896792). Do not invent fixtures for a route or field the API does not define. After setup, summarize his role and that wait, then stop.
 
 The submitted demo is at most 2 minutes. `docs/DEMO_SCRIPT.md` labels the longer script as a rehearsal.
 

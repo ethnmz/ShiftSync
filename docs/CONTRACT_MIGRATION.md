@@ -14,13 +14,15 @@ The four people agreed in person to nine notes. The record of the proposal is ht
 | Voice answers during the check | `POST /verification/{vid}/answer` accepts audio. It is not `POST /ingest/voice`. |
 | Who said it, and who assigned the follow-up | `Statement.speaker_id`, `Fact.source_statement_id`, `FollowUp.assigned_by`, `FollowUp.assigned_at`. There is no `Fact.said_by` field. |
 
-## What the pack changes, and is not a new team approval
+## What the pack changes, approved by all four
 
-1. **Unassigned follow-ups do not block completion.** The pack says open follow-ups never block a transition, and a handoff can be verified while a follow-up is still "To be assigned." The in-person note blocked signoff until an unknown had an owner and a due time. This PR keeps the pack's rule. Review it before anyone codes the gate.
+On the board, all four people chose the pack's rule on all six points below (question: https://github.com/ethnmz/hackutd2026/issues/1#issuecomment-6716896792). None of these is still open.
+
+1. **Unassigned follow-ups do not block completion.** The pack says open follow-ups never block a transition, and a handoff can be verified while a follow-up is still "To be assigned." The in-person note blocked signoff until an unknown had an owner and a due time. The team chose the pack's rule instead. The follow-up stays open and carries over to the next handoff.
 2. **No `ready_to_sign` state and no single Sign button.** Receipt is `POST /handoffs/{id}/acknowledge`. Understanding is the verification loop, ending in `verified` or `verified_with_assistance`. The old signoff status is not reintroduced.
 3. **Submit is blocked by unreviewed critical facts and pending safety questions**, including when the answer was "I don't know." It is not blocked by a missing owner.
-4. **Shift and clock are not fields on `GET /handoffs/{id}`.** Demo clock endpoints exist (`POST /demo/clock`). Putting `now`, shift, and lead on the handoff payload is still an open addition.
-5. **Delivery status (`sent` / `failed`) is not in the P0 API.** The web app is the primary path, so a failed iMessage is not required for the answer box. Add it with the optional bridge if the team still wants it.
-6. **Demo identity.** The UI switches Maya, Jordan, and Dana with an `X-User` roster id. That is a demo selector, not authentication. `config/roster.yaml` still has fictional phones for the optional bridge. A phone-free `GET /roster` (id, name, role) is not in the pack. Add it only if the team still wants that exact route.
+4. **Shift and clock are not fields on `GET /handoffs/{id}`.** Demo clock endpoints exist (`POST /demo/clock`). `now`, shift, and lead are not added to the handoff payload.
+5. **Delivery status (`sent` / `failed`) is not in the P0 API.** The web app is the primary path, so a failed iMessage is not required for the answer box. It is not added.
+6. **Demo identity.** The UI switches Maya, Jordan, and Dana with an `X-User` roster id. That is a demo selector, not authentication. `config/roster.yaml` still has fictional phones for the optional bridge. A phone-free `GET /roster` (id, name, role) is not in the pack and is not added.
 
 Do not restore `/ingest`, `/handoff/sign`, or `ready_to_sign` just to keep the old names.
