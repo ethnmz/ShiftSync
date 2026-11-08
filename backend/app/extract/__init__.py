@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..certainty.quotes import supported_quote
 from ..llm.client import complete_json
@@ -25,13 +25,6 @@ class FactOut(Candidate):
     quote: str
     owner_mentioned: str | None = None
     deadline_text: str | None = None
-
-    @field_validator("quote")
-    @classmethod
-    def validate_quote_length(cls, quote: str) -> str:
-        if not 3 <= len(quote.split()) <= 30:
-            raise ValueError("Quote 3 to 30 consecutive words from the source, including hedges.")
-        return quote
 
 
 class ItemOut(Candidate):
