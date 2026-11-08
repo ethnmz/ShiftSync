@@ -59,10 +59,12 @@ export default {
       keyframes: {
         rise: { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "translateY(0)" } },
         shimmer: { from: { backgroundPosition: "-200% 0" }, to: { backgroundPosition: "200% 0" } },
+        bob: { "0%, 100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-6px)" } },
       },
       animation: {
         rise: "rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both",
         shimmer: "shimmer 1.6s linear infinite",
+        bob: "bob 3.2s ease-in-out infinite",
       },
       minHeight: { touch: "44px" },
       minWidth: { touch: "44px" },

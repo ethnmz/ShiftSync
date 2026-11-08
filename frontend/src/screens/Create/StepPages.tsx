@@ -12,6 +12,7 @@ import { PageWidth, suggestedStep, useFlow, useHandoffQuery } from "./CreateFlow
 import { ClarifyPanel, ItemSummary, NotAskedList, QAHistory, focusFor } from "./ClarifyStage";
 import ReviewStage from "./ReviewStage";
 import Workspace, { TabBar } from "../../components/Workspace";
+import SourceCheck from "../../components/mascots/SourceCheck";
 
 function useLoaded() {
   const { id } = useParams();
@@ -267,7 +268,7 @@ export function ReviewPage() {
                 />
               </ul>
               <div className="border-t border-line pt-5">
-                <p className="mb-4 text-sm text-muted">Where it came from</p>
+                <SourceCheck quote={fact.quote} source={source[0]?.text} />
                 <Transcript statements={source} facts={facts} questions={h.questions} selectedFact={fact} />
               </div>
             </div>

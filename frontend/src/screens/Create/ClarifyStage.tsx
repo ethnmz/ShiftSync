@@ -3,12 +3,12 @@ import type { AnswerInput } from "../../api/client";
 import type { HandoffDetail, Question } from "../../api/types";
 import CertaintyBadge from "../../components/CertaintyBadge";
 import QuestionCard from "../../components/QuestionCard";
-import { Logo } from "../../components/icons";
 import { CircleCheck, CircleHelp } from "lucide-react";
 import { Button, Notice } from "../../components/ui";
 import { formatClock, slotLabel } from "../../labels";
 import { person } from "../../session/roster";
 import { byPriority } from "../../review";
+import { AiByline } from "../../components/mascots/Flat";
 
 // What an answered question added: the facts sourced from its answer.
 export function effectOf(handoff: HandoffDetail, q: Question) {
@@ -54,7 +54,7 @@ function SystemLine({ tone, children }: { tone: "ok" | "unk"; children: ReactNod
 function AskBubble({ children, item }: { children: ReactNode; item?: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <SenderRow name="ShiftSync" avatar={<Logo size={28} />} />
+      <AiByline kind="orbit" />
       {item && <p className="text-sm text-muted">{item}</p>}
       <div className="min-w-0">{children}</div>
     </div>

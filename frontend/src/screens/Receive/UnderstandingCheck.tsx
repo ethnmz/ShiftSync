@@ -8,6 +8,7 @@ import QuestionCard from "../../components/QuestionCard";
 import { Button, Card, Chip, fieldClass, Notice, type Tone } from "../../components/ui";
 import { formatClock } from "../../labels";
 import { useUser } from "../../session/user";
+import { AiByline } from "../../components/mascots/Flat";
 
 const ATTEMPT_LIMIT = 2; // config/slots.yaml budgets.verification_attempts
 
@@ -286,7 +287,10 @@ export default function UnderstandingCheck({ handoff, onChanged }: { handoff: Ha
   return (
     <Card className="p-5">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">Understanding check</h2>
+        <h2 className="flex flex-col gap-1.5 text-lg font-semibold">
+          <AiByline kind="lumen" />
+          Understanding check
+        </h2>
         <span className="text-xs text-muted">Separate from acknowledgment · up to {ATTEMPT_LIMIT} attempts per question</span>
       </div>
       {body}

@@ -10,6 +10,7 @@ import { LevelMeter, RECORDER_ERROR_TEXT, formatTime, useRecorder } from "../../
 import { isEditable } from "../../review";
 import { person, useUser } from "../../session/user";
 import { DEMO_INCOMING_ID, PageWidth, suggestedStep, useFlow, useHandoffQuery } from "./CreateFlow";
+import { AiByline } from "../../components/mascots/Flat";
 
 type Mode = "record" | "type";
 const RANK: Record<Certainty, number> = { unknown: 0, unverified: 1, reported: 2, confirmed: 3 };
@@ -34,6 +35,7 @@ function Reply({ handoff, onContinue }: { handoff: HandoffDetail; onContinue: ()
   const items = [...handoff.items].sort((a, b) => order[a.priority] - order[b.priority]);
   return (
     <div className="max-w-[88%] self-start rounded-2xl border border-line bg-surface p-5">
+      <AiByline kind="murmur" className="mb-3" />
       <p className="leading-relaxed">
         I pulled {items.length} item{items.length === 1 ? "" : "s"} out of your note.{" "}
         {pending ? `I have up to ${handoff.budget.max} quick questions before ${handoff.incoming.name.split(" ")[0]} takes over.` : "Nothing important is missing."}
