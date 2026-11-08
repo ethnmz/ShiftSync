@@ -68,8 +68,11 @@ def test_full_run_with_fake_llm(data_dir):
     assert json.loads((data_dir / "eval_results.json").read_text())["status"] == "complete"
 
 
-def test_unavailable_llm_reports_not_run_without_numbers(data_dir):
-    out = asyncio.run(eval_run.run(runs=1, only="vague_ups"))  # no app.llm.client yet
+def test_unavailable_llm_reports_not_run_without_numbers(data_dir, monkeypatch):
+    # Never reach a real provider from the test suite, even if backend/.env has a key.
+    for var in ("NEMOTRON_MODEL", "CLAUDE_MODEL", "NVIDIA_API_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
+    out = asyncio.run(eval_run.run(runs=1, only="vague_ups"))
     assert out["status"] == "not_run" and out["reason"] and out["scenarios"] == {}
     assert eval_run.read_results()["status"] == "not_run"
 

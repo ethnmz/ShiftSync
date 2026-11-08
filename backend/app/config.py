@@ -17,6 +17,36 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_DIR.parent
 
 
+def load_env_file(path: Path) -> list[str]:
+    """Read KEY=VALUE lines from a .env file into os.environ.
+
+    Variables already set in the real environment win. Returns the keys it set
+    (never the values, so keys can't leak into logs).
+    """
+    if not path.is_file():
+        return []
+    loaded = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.removeprefix("export ").partition("=")
+        key, value = key.strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        elif " #" in value:
+            value = value.split(" #", 1)[0].rstrip()
+        if key and key not in os.environ:
+            os.environ[key] = value
+            loaded.append(key)
+    return loaded
+
+
+# backend/.env (gitignored) holds provider keys and model ids. Load it once at import
+# so the LLM client, STT and the eval runner see the same settings.
+load_env_file(BACKEND_DIR / ".env")
+
+
 def _path_from_env(var: str, default: Path) -> Path:
     raw = os.environ.get(var)
     if not raw:
