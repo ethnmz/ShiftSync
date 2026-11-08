@@ -75,7 +75,10 @@ async def extract(statement: str, *, assets, kinds, roster, speaker, existing_it
     item_ids = {item["id"] for item in existing_items}
     kept = []
     for item in result.items:
-        if item.kind not in kinds or len(item.title.split()) > 8:
+        if item.kind not in kinds:
+            continue
+        if len(item.title.split()) > 8:
+            logger.info("Dropped extracted item: title exceeds 8 words")
             continue
         if item.asset_id not in asset_ids:
             item.asset_id = None
@@ -87,7 +90,10 @@ async def extract(statement: str, *, assets, kinds, roster, speaker, existing_it
             if not supported_quote(fact.quote, statement):
                 logger.warning("Dropped extracted fact with unsupported source quote")
                 continue
-            if fact.slot not in slots or len(fact.value.split()) > 15:
+            if fact.slot not in slots:
+                continue
+            if len(fact.value.split()) > 15:
+                logger.info("Dropped extracted fact: value exceeds 15 words")
                 continue
             values = slots[fact.slot].get("values")
             if values and fact.normalized not in values:
