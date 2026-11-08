@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Message, Space } from "spectrum-ts";
 
-import { type BridgeConfig, UNREACHABLE, UNSUPPORTED, handle, parseSenderMap } from "../src/handle.ts";
+import { type BridgeConfig, UNREACHABLE, UNSUPPORTED, deliverNotices, handle, parseSenderMap } from "../src/handle.ts";
 
 interface Call {
   url: string;
@@ -126,4 +126,42 @@ test("sender ids map to roster phones, and terminal mode uses a fixed phone", as
   await handle(g.space, g.message, config(api.fetchFn, { fixedPhone: "+15550100001" }));
   const phones = api.calls.map((c) => JSON.parse(c.init.body as string).sender_phone);
   assert.deepEqual(phones, ["+15550100004", "+15550100001"]);
+});
+
+const JORDAN_NOTICE = { phone: "+15550100004", text: "Maya handed off to you. Reply to open the briefing." };
+const JORDAN_MAP = new Map([["me@icloud.com", "+15550100004"]]);
+
+test("a notice goes to the sender id behind the roster phone", async () => {
+  const api = backend(200, { notices: [JORDAN_NOTICE] });
+  const sent: [string, string][] = [];
+  await deliverNotices(config(api.fetchFn, { senderMap: JORDAN_MAP }), async (id, text) => void sent.push([id, text]));
+  assert.equal(api.calls[0].url, "http://api.test/api/inbound/imessage/notices");
+  assert.equal(api.calls[0].init.method, "POST");
+  assert.deepEqual(sent, [["me@icloud.com", JORDAN_NOTICE.text]]);
+});
+
+test("a notice for someone not in SENDER_MAP is skipped", async () => {
+  const api = backend(200, { notices: [JORDAN_NOTICE] });
+  await deliverNotices(config(api.fetchFn), async () => assert.fail("nobody to send to"));
+});
+
+test("one failed notice doesn't stop the next, and nothing throws", async () => {
+  const other = { phone: "+15550100007", text: "Next one." };
+  const api = backend(200, { notices: [JORDAN_NOTICE, other] });
+  const senderMap = new Map([...JORDAN_MAP, ["+12145550199", other.phone]]);
+  const sent: string[] = [];
+  await deliverNotices(config(api.fetchFn, { senderMap }), async (id, text) => {
+    if (id === "me@icloud.com") throw new Error("photon refused");
+    sent.push(text);
+  });
+  assert.deepEqual(sent, [other.text]);
+});
+
+test("a dead or failing backend sends nothing and doesn't throw", async () => {
+  const dead = (async () => {
+    throw new TypeError("fetch failed");
+  }) as typeof fetch;
+  const never = async () => assert.fail("no notices to send");
+  await deliverNotices(config(dead, { senderMap: JORDAN_MAP }), never);
+  await deliverNotices(config(backend(500, {}).fetchFn, { senderMap: JORDAN_MAP }), never);
 });
