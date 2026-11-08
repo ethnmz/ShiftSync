@@ -239,6 +239,11 @@ class DefaultAnalyzer:
 
     async def phrase_question(self, *, gap, item):
         try:
+            catalog = config.kind_slots(item["kind"])
+            # What each asked slot means (slots.yaml hints), so the question stays on the
+            # slots code chose and doesn't drift back to the operator's vague words.
+            gap = {**gap, "ASK ONLY ABOUT": {s: catalog.get(s, {}).get("hint") or s.replace("_", " ")
+                                             for s in gap["slots"]}}
             user = _json({"GAP": gap, "ITEM": {"title": item["title"], "kind": item["kind"]},
                           "FACTS": item.get("facts", []), "SHIFT A'S WORDS": item.get("quotes", [])})
             out = await _complete("clarify", "clarify", user, "ClarificationText")

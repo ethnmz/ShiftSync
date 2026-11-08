@@ -8,6 +8,7 @@ statement is kept and nothing else changes.
 """
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
@@ -294,6 +295,28 @@ def _guard_fact(normalized: str | None, quote: str) -> str | None:
     return None
 
 
+def _norm_words(text: str) -> str:
+    return " " + re.sub(r"[^a-z0-9]+", " ", text.lower()).strip() + " "
+
+
+def _mentioned_asset(ext: Any, statement_text: str, registry: dict[str, Any]) -> str | None:
+    """The extracted asset id, only if the speaker actually named that equipment.
+
+    The id, name or one of its aliases from assets.yaml must appear in the
+    statement (case, hyphens and punctuation ignored). Otherwise the model picked
+    equipment nobody mentioned, and the item gets no asset rather than a guessed one.
+    """
+    asset_id = getattr(ext, "asset_id", None)
+    asset = registry.get(asset_id) if asset_id else None
+    if asset is None:
+        return None
+    said = _norm_words(statement_text)
+    names = [asset_id, asset.get("name", ""), *asset.get("aliases", [])]
+    if any(n and _norm_words(n) in said for n in names):
+        return asset_id
+    return None
+
+
 def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: ClarificationQuestion | None) -> None:
     items = {i.id: i for i in handoff_items(session, h.id)}
     registry = config.assets()
@@ -307,7 +330,7 @@ def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: Cl
         link = getattr(ext, "link_item_id", None)
         if link in items:
             return items[link]
-        asset = ext.asset_id if getattr(ext, "asset_id", None) in registry else None
+        asset = _mentioned_asset(ext, stmt.text, registry)
         # An answer to a question about an item updates that item, even if the model
         # labels it another kind ("bypass" for UPS-B's clearance answer). Only a
         # different named asset makes it a separate item.
@@ -320,7 +343,7 @@ def _merge(session: Session, h: Handoff, stmt: Statement, extraction: Any, q: Cl
         return None
 
     for ext in list(getattr(extraction, "items", []) or []):
-        asset = ext.asset_id if getattr(ext, "asset_id", None) in registry else None
+        asset = _mentioned_asset(ext, stmt.text, registry)
         target = find_target(ext)
         if target is None:
             target = Item(id=next_id(session, Item), handoff_id=h.id, kind=ext.kind, title=ext.title,
@@ -377,6 +400,12 @@ def _add_fact(session: Session, h: Handoff, stmt: Statement, item: Item, ef: Any
         return
     proposed = ef.certainty if ef.certainty in CERTAINTIES else "unverified"
     certainty, reason = floor_certainty(proposed, quote)
+    if certainty == "unknown" and normalized and normalized != "unknown" and \
+            "unknown" in config.kind_slots(item.kind).get(slot, {}).get("values", []):
+        # "I don't know if they finished" can't be recorded as work_status=incomplete:
+        # an unknown fact keeps an unknown value.
+        audit(session, "normalized_unknown", handoff_id=h.id, item_id=item.id, slot=slot, proposed=normalized)
+        normalized = "unknown"
     fact = Fact(id=next_id(session, Fact), item_id=item.id, slot=slot, value=ef.value, normalized=normalized,
                 certainty=certainty, certainty_reason=reason or "operator stated", review_state="ai_extracted",
                 source_statement_id=stmt.id, quote=quote)
