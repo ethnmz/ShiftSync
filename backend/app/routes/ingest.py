@@ -128,18 +128,8 @@ async def _read_spoken(request: Request, name: str) -> tuple[str, str, str | Non
         if not isinstance(upload, UploadFile):
             raise service.Unprocessable("Send the recording in the `file` field.")
         fields = {"question_id": _form_str(form.get("question_id"))}
-        saved = await _save_upload(upload, name)
-        # Assumption: audio_path is stored relative to DATA_DIR ("audio/H-0001-….webm").
-        audio_path = saved.relative_to(config.data_dir()).as_posix()
-        try:
-            transcript = await run_in_threadpool(stt.transcribe, saved)
-        except stt.STTError as exc:
-            log.warning("Transcription failed for %s (%s); audio kept at %s", name, exc, audio_path)
-            raise service.Unprocessable(
-                f"Couldn't transcribe that recording. {exc} You can type it instead.",
-                payload={"audio_saved": True}, code="transcription_failed",
-            ) from exc
-        return transcript.text, "voice_web", audio_path, fields
+        text, audio_path = await save_and_transcribe(upload, name)
+        return text, "voice_web", audio_path, fields
 
     if content_type.startswith("application/json"):
         try:
@@ -154,6 +144,27 @@ async def _read_spoken(request: Request, name: str) -> tuple[str, str, str | Non
         return text, "text_web", None, {"question_id": _form_str(body.get("question_id"))}
 
     raise service.Unprocessable("Send JSON text or a multipart recording.")
+
+
+async def save_and_transcribe(upload: UploadFile, name: str,
+                              fallback: str = "You can type it instead.") -> tuple[str, str]:
+    """(text, audio_path) for a recording. Also used by the iMessage route (routes/inbound.py).
+
+    A recording that can't be transcribed is kept and raises transcription_failed,
+    whose message ends with `fallback`.
+    """
+    saved = await _save_upload(upload, name)
+    # Assumption: audio_path is stored relative to DATA_DIR ("audio/H-0001-….webm").
+    audio_path = saved.relative_to(config.data_dir()).as_posix()
+    try:
+        transcript = await run_in_threadpool(stt.transcribe, saved)
+    except stt.STTError as exc:
+        log.warning("Transcription failed for %s (%s); audio kept at %s", name, exc, audio_path)
+        raise service.Unprocessable(
+            f"Couldn't transcribe that recording. {exc} {fallback}",
+            payload={"audio_saved": True}, code="transcription_failed",
+        ) from exc
+    return transcript.text, audio_path
 
 
 def _form_str(value: Any) -> str | None:
