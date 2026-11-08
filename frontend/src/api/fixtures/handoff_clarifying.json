@@ -1,0 +1,143 @@
+{
+  "id": "H-0007",
+  "state": "clarifying",
+  "outgoing": { "id": "maya", "name": "Maya Chen" },
+  "incoming": { "id": "jordan", "name": "Jordan Blake" },
+  "statements": [
+    {
+      "id": "S-1",
+      "speaker_id": "maya",
+      "role": "handoff",
+      "text": "UPS-B maintenance is mostly finished. The vendor is coming back tomorrow. Generator 1 looks good. I'm not sure what happened with the cooling inspection, but everything else should be okay.",
+      "audio_url": "/api/statements/S-1/audio",
+      "at": "2026-11-08T12:35:30Z"
+    }
+  ],
+  "items": [
+    {
+      "id": "I-1",
+      "title": "UPS-B maintenance",
+      "kind": "vendor_work",
+      "asset_ids": ["UPS-B"],
+      "priority": "critical",
+      "is_decision": false,
+      "open": true,
+      "facts": [
+        {
+          "id": "F-1",
+          "slot": "work_status",
+          "value": "Mostly finished",
+          "normalized": "incomplete",
+          "certainty": "unverified",
+          "certainty_reason": "hedge:\"mostly\"",
+          "review_state": "ai_extracted",
+          "quote": "UPS-B maintenance is mostly finished.",
+          "source_statement_id": "S-1",
+          "history": []
+        },
+        {
+          "id": "F-2",
+          "slot": "vendor_return",
+          "value": "Vendor returns tomorrow",
+          "normalized": null,
+          "certainty": "confirmed",
+          "certainty_reason": "operator stated",
+          "review_state": "ai_extracted",
+          "quote": "The vendor is coming back tomorrow.",
+          "source_statement_id": "S-1",
+          "history": []
+        }
+      ]
+    },
+    {
+      "id": "I-2",
+      "title": "Generator 1",
+      "kind": "observation",
+      "asset_ids": ["GEN-1"],
+      "priority": "routine",
+      "is_decision": false,
+      "open": true,
+      "facts": [
+        {
+          "id": "F-3",
+          "slot": "condition",
+          "value": "Looks good",
+          "normalized": null,
+          "certainty": "reported",
+          "certainty_reason": "observation:\"looks good\"",
+          "review_state": "ai_extracted",
+          "quote": "Generator 1 looks good.",
+          "source_statement_id": "S-1",
+          "history": []
+        }
+      ]
+    },
+    {
+      "id": "I-3",
+      "title": "Cooling inspection",
+      "kind": "inspection",
+      "asset_ids": [],
+      "priority": "critical",
+      "is_decision": false,
+      "open": true,
+      "facts": [
+        {
+          "id": "F-4",
+          "slot": "work_status",
+          "value": "Unknown",
+          "normalized": "unknown",
+          "certainty": "unknown",
+          "certainty_reason": "uncertainty:\"not sure\"",
+          "review_state": "ai_extracted",
+          "quote": "I'm not sure what happened with the cooling inspection",
+          "source_statement_id": "S-1",
+          "history": []
+        }
+      ]
+    },
+    {
+      "id": "I-4",
+      "title": "Everything else",
+      "kind": "general_claim",
+      "asset_ids": [],
+      "priority": "important",
+      "is_decision": false,
+      "open": true,
+      "facts": [
+        {
+          "id": "F-5",
+          "slot": "condition",
+          "value": "Everything else should be okay",
+          "normalized": null,
+          "certainty": "unverified",
+          "certainty_reason": "hedge:\"should be\"",
+          "review_state": "ai_extracted",
+          "quote": "everything else should be okay.",
+          "source_statement_id": "S-1",
+          "history": []
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q-1",
+      "item_id": "I-1",
+      "gap_type": "vague_statement",
+      "text": "You said UPS-B is \"mostly finished.\" What work remains, and why wasn't it completed?",
+      "status": "pending",
+      "why_asked": "\"mostly finished\" — what's left and why?"
+    }
+  ],
+  "not_asked": [],
+  "budget": { "used": 1, "max": 3 },
+  "followups": [],
+  "status_line": {
+    "submitted_at": null,
+    "acknowledged_at": null,
+    "verified_at": null,
+    "open_followups": 0,
+    "unassigned_followups": 0
+  },
+  "metrics": {}
+}

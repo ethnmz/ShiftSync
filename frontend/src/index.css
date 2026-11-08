@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens. Light neutral surfaces, thin borders, one accent, and
+   semantic colors for the four certainty levels. Light only. */
+:root {
+  --bg: 246 245 242;
+  --surface: 255 255 255;
+  --subtle: 242 243 245;
+  --line: 226 228 232;
+  --line-strong: 205 208 214;
+  --ink: 24 26 32;
+  --muted: 92 98 110;
+  --faint: 132 138 150;
+  --accent: 58 91 230;
+  --accent-ink: 255 255 255;
+  /* certainty + status (text-safe on surface) */
+  --ok: 21 122 58;
+  --info: 29 92 220;
+  --warn: 166 82 0;
+  --unk: 112 52 210;
+  --danger: 196 32 38;
+  color-scheme: light;
+}
+
+body {
+  @apply bg-bg font-sans text-base font-normal text-ink antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  @apply font-semibold;
+}
+
+/* Visible keyboard focus everywhere. */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+mark {
+  background: rgb(var(--warn) / 0.22);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
